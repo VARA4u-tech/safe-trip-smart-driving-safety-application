@@ -149,8 +149,8 @@
     .glass-panel {
       @apply backdrop-blur-md; /* Reduced from blur-xl for mobile GPU */
       background: hsl(
-        var(--glass-bg) / 0.85
-      ); /* Slightly more opaque to compensate */
+        var(--card) / 0.98
+      ); /* Solid card background for mobile readability */
     }
 
     body {

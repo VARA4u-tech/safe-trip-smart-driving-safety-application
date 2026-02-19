@@ -135,8 +135,8 @@ const TripSummaryOverlay = ({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 items-center">
           {/* Safety Gauge */}
-          <div className="flex flex-col items-center justify-center space-y-4">
-            <div className="relative w-36 h-36 sm:w-40 sm:h-40 flex items-center justify-center">
+          <div className="flex flex-col items-center justify-center space-y-3 sm:space-y-4">
+            <div className="relative w-32 h-32 sm:w-40 sm:h-40 flex items-center justify-center">
               <svg
                 className="w-full h-full transform -rotate-90"
                 viewBox="0 0 160 160"
