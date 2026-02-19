@@ -1,0 +1,29 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Shield Icon -->
+  <g id="LogoIcon">
+    <!-- Shield Background & Border -->
+    <path d="M256 460C256 460 410 420 410 260V140L256 80L102 140V260C102 420 256 460 256 460Z" fill="#1B2B38" stroke="#C5A028" stroke-width="24" stroke-linejoin="round"/>
+    
+    <!-- Interior Road Design -->
+    <clipPath id="shield_interior">
+      <path d="M256 460C256 460 410 420 410 260V140L256 80L102 140V260C102 420 256 460 256 460Z" />
+    </clipPath>
+
+    <g clip-path="url(#shield_interior)">
+      <!-- Gold Ground / Perspective area -->
+      <path d="M256 460L410 260V140H102V260L256 460Z" fill="#C5A028" fill-opacity="0.8" />
+      
+      <!-- Central Navy Road Surface -->
+      <path d="M256 460C256 360 460 300 350 140H162C52 300 256 360 256 460Z" fill="#1B2B38" />
+      
+      <!-- Road Dashes -->
+      <path d="M256 460C256 360 460 300 350 140" stroke="white" stroke-width="8" stroke-dasharray="12 20" opacity="0.6" stroke-linecap="round" />
+    </g>
+
+    <!-- Floating Location Pin at the top point -->
+    <g transform="translate(256, 120)">
+      <path d="M0 45C16.5685 45 30 31.5685 30 15C30 -1.56854 16.5685 -15 0 -15C-16.5685 -15 -30 -1.56854 -30 15C-30 31.5685 -16.5685 45 0 45Z" fill="#C5A028"/>
+      <circle cx="0" cy="15" r="8" fill="#1B2B38"/>
+    </g>
+  </g>
+</svg>
