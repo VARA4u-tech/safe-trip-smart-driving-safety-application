@@ -869,6 +869,9 @@ const LiveMapScreen = () => {
                 accessToken={MAPBOX_TOKEN}
                 onNavigateTo={handleNavigateTo}
                 externalQuery={quickSearch}
+                isTripActive={tripActive}
+                onStartTrip={startTrip}
+                onEndTrip={endTrip}
               />
               <QuickServices onSearch={(q) => setQuickSearch(q)} />
             </div>

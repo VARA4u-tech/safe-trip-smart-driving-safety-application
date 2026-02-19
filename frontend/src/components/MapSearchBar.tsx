@@ -11,6 +11,9 @@ interface MapSearchBarProps {
     coords: [number, number];
   }) => void;
   externalQuery?: string;
+  isTripActive?: boolean;
+  onStartTrip?: () => void;
+  onEndTrip?: () => void;
 }
 
 interface SearchResult {
@@ -24,6 +27,9 @@ const MapSearchBar = ({
   accessToken,
   onNavigateTo,
   externalQuery,
+  isTripActive,
+  onStartTrip,
+  onEndTrip,
 }: MapSearchBarProps) => {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -139,6 +145,11 @@ const MapSearchBar = ({
 
     if (navigate && onNavigateTo) {
       onNavigateTo({ name: r.place_name, coords: r.center });
+      // Auto-start trip on selection
+      if (onStartTrip && !isTripActive) {
+        onStartTrip();
+        toast.success("Trip auto-started to destination");
+      }
     }
   };
 
@@ -147,6 +158,11 @@ const MapSearchBar = ({
     setResults([]);
     searchMarkerRef.current?.remove();
     searchMarkerRef.current = null;
+
+    if (isTripActive && onEndTrip) {
+      onEndTrip();
+      toast.info("Trip ended");
+    }
   };
 
   return (
