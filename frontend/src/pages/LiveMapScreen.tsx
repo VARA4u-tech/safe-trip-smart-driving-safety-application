@@ -813,309 +813,327 @@ const LiveMapScreen = () => {
         {/* Map container */}
         <div ref={mapContainerRef} className="absolute inset-0" />
 
-        {/* ── TOP BAR ─────────────────────────────────────────────────────── */}
-        <div className="absolute top-0 left-0 right-0 z-40 flex flex-col gap-2 px-3 pt-3 sm:px-4 sm:pt-4 pointer-events-none">
-          {/* Row 1: Home + status + voice + Dashboard */}
-          <div className="flex items-center justify-between gap-2 pointer-events-auto">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => navigate("/")}
-                title="Return to Home"
-                aria-label="Go home"
-                className={`${isCompact ? "w-10 h-10" : "w-12 h-12"} glass-panel rounded-2xl flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all shadow-lg text-primary`}
-              >
-                <Home className={`${isCompact ? "w-5 h-5" : "w-6 h-6"}`} />
-              </button>
+        {!tripSummary && (
+          <>
+            {/* ── TOP BAR ─────────────────────────────────────────────────────── */}
+            <div className="absolute top-0 left-0 right-0 z-40 flex flex-col gap-2 px-3 pt-3 sm:px-4 sm:pt-4 pointer-events-none">
+              {/* Row 1: Home + status + voice + Dashboard */}
+              <div className="flex items-center justify-between gap-2 pointer-events-auto">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => navigate("/")}
+                    title="Return to Home"
+                    aria-label="Go home"
+                    className={`${isCompact ? "w-10 h-10" : "w-12 h-12"} glass-panel rounded-2xl flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all shadow-lg text-primary`}
+                  >
+                    <Home className={`${isCompact ? "w-5 h-5" : "w-6 h-6"}`} />
+                  </button>
 
-              <button
-                onClick={() => navigate("/dashboard")}
-                title="User Dashboard"
-                aria-label="User profile"
-                className={`${isCompact ? "w-10 h-10" : "w-12 h-12"} glass-panel rounded-2xl flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all shadow-lg text-primary relative`}
-              >
-                <User className={`${isCompact ? "w-5 h-5" : "w-6 h-6"}`} />
-              </button>
+                  <button
+                    onClick={() => navigate("/dashboard")}
+                    title="User Dashboard"
+                    aria-label="User profile"
+                    className={`${isCompact ? "w-10 h-10" : "w-12 h-12"} glass-panel rounded-2xl flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all shadow-lg text-primary relative`}
+                  >
+                    <User className={`${isCompact ? "w-5 h-5" : "w-6 h-6"}`} />
+                  </button>
+                </div>
+
+                {!isCompact && (
+                  <div className="glass-panel px-4 py-2 rounded-2xl hidden sm:block shadow">
+                    <span className="text-[9px] uppercase tracking-[0.3em] font-black text-primary/60 block leading-none mb-1">
+                      Status
+                    </span>
+                    <span className="font-bold text-sm">
+                      {tripActive ? "● TRIP ACTIVE" : "READY"}
+                    </span>
+                  </div>
+                )}
+
+                {/* Live Weather Widget */}
+                {!isCompact && <WeatherWidget />}
+
+                {/* AI Safety Widget */}
+                <MLSafetyWidget
+                  currentSpeedKmh={speedKmh}
+                  weatherCondition={env.weather.condition}
+                  trafficLevel={env.traffic.congestionLabel.toLowerCase()}
+                />
+
+                <VoiceCommandButton onCommand={handleVoiceCommand} />
+              </div>
+
+              {/* Row 2: Search Bar (Hidden during navigation) */}
+              {!navRoute && (
+                <div className="pointer-events-auto space-y-4 px-1">
+                  <MapSearchBar
+                    mapRef={mapRef as React.RefObject<mapboxgl.Map | null>}
+                    accessToken={MAPBOX_TOKEN}
+                    onNavigateTo={handleNavigateTo}
+                    externalQuery={quickSearch}
+                    isTripActive={tripActive}
+                    onStartTrip={startTrip}
+                    onEndTrip={endTrip}
+                  />
+                  <QuickServices onSearch={(q) => setQuickSearch(q)} />
+                </div>
+              )}
             </div>
 
-            {!isCompact && (
-              <div className="glass-panel px-4 py-2 rounded-2xl hidden sm:block shadow">
-                <span className="text-[9px] uppercase tracking-[0.3em] font-black text-primary/60 block leading-none mb-1">
-                  Status
-                </span>
-                <span className="font-bold text-sm">
-                  {tripActive ? "● TRIP ACTIVE" : "READY"}
-                </span>
-              </div>
-            )}
-
-            {/* Live Weather Widget */}
-            {!isCompact && <WeatherWidget />}
-
-            {/* AI Safety Widget */}
-            <MLSafetyWidget
-              currentSpeedKmh={speedKmh}
-              weatherCondition={env.weather.condition}
-              trafficLevel={env.traffic.congestionLabel.toLowerCase()}
+            {/* ── Navigation Directions ──────────────────────────────────────── */}
+            <NavigationDirections
+              route={navRoute}
+              destinationName={destinationName}
+              onClose={clearRoute}
+              currentStepIndex={currentStepIndex}
+              onToggleAR={() => setArMode(true)}
             />
 
-            <VoiceCommandButton onCommand={handleVoiceCommand} />
-          </div>
-
-          {/* Row 2: Search Bar (Hidden during navigation) */}
-          {!navRoute && (
-            <div className="pointer-events-auto space-y-4 px-1">
-              <MapSearchBar
-                mapRef={mapRef as React.RefObject<mapboxgl.Map | null>}
-                accessToken={MAPBOX_TOKEN}
-                onNavigateTo={handleNavigateTo}
-                externalQuery={quickSearch}
-                isTripActive={tripActive}
-                onStartTrip={startTrip}
-                onEndTrip={endTrip}
+            {arMode && (
+              <ARNavigation
+                route={navRoute}
+                currentStepIndex={currentStepIndex}
+                onClose={() => setArMode(false)}
               />
-              <QuickServices onSearch={(q) => setQuickSearch(q)} />
-            </div>
-          )}
-        </div>
+            )}
 
-        {/* ── Navigation Directions ──────────────────────────────────────── */}
-        <NavigationDirections
-          route={navRoute}
-          destinationName={destinationName}
-          onClose={clearRoute}
-          currentStepIndex={currentStepIndex}
-          onToggleAR={() => setArMode(true)}
-        />
+            {/* ── Speed / Heading HUD ────────────────────────────────────────── */}
+            <SpeedHeadingHUD
+              speed={speed}
+              heading={heading}
+              gpsActive={gpsActive}
+              tripActive={tripActive}
+              tripDistanceKm={tripDistanceKm}
+              tripDurationSec={tripDurationSec}
+              isCompact={isCompact}
+            />
 
-        {arMode && (
-          <ARNavigation
-            route={navRoute}
-            currentStepIndex={currentStepIndex}
-            onClose={() => setArMode(false)}
-          />
-        )}
-
-        {/* ── Speed / Heading HUD ────────────────────────────────────────── */}
-        <SpeedHeadingHUD
-          speed={speed}
-          heading={heading}
-          gpsActive={gpsActive}
-          tripActive={tripActive}
-          tripDistanceKm={tripDistanceKm}
-          tripDurationSec={tripDurationSec}
-          isCompact={isCompact}
-        />
-
-        {/* ── RIGHT CONTROLS COLUMN ─────────────────────────────────────── */}
-        {/*
+            {/* ── RIGHT CONTROLS COLUMN ─────────────────────────────────────── */}
+            {/*
           Layout (top→bottom, right side):
           Compass | 3D | Follow | Layers | Recenter | Zoom+| Zoom-
         */}
-        <div
-          className="absolute right-3 sm:right-4 flex flex-col gap-2 z-30"
-          style={{ bottom: "calc(10.5rem + env(safe-area-inset-bottom, 0px))" }}
-        >
-          {/* Compass (rotates with map bearing) */}
-          <button
-            onClick={resetNorth}
-            aria-label="Reset north"
-            title="Tap to reset north"
-            className={`${isCompact ? "w-10 h-10" : "w-11 h-11"} glass-panel rounded-xl flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all shadow-md overflow-hidden`}
-          >
-            <Compass
-              className={`${isCompact ? "w-4 h-4" : "w-5 h-5"}`}
-              style={compassStyle}
-            />
-          </button>
-
-          {/* 2D / 3D toggle */}
-          <button
-            onClick={toggle3D}
-            aria-label="Toggle 3D view"
-            title={is3D ? "Switch to 2D" : "Switch to 3D"}
-            className={`${isCompact ? "w-10 h-10" : "w-11 h-11"} glass-panel rounded-xl flex items-center justify-center transition-all shadow-md text-xs font-black ${is3D ? "bg-primary text-primary-foreground" : "hover:bg-primary/10"}`}
-          >
-            <Box className={`${isCompact ? "w-4 h-4" : "w-5 h-5"}`} />
-          </button>
-
-          {/* Follow mode (auto-rotate with heading) */}
-          <button
-            onClick={toggleFollowMode}
-            aria-label="Toggle follow mode"
-            title={followMode ? "Disable follow mode" : "Enable follow mode"}
-            className={`${isCompact ? "w-10 h-10" : "w-11 h-11"} glass-panel rounded-xl flex items-center justify-center transition-all shadow-md ${followMode ? "bg-blue-500 text-white" : "hover:bg-blue-500/10"}`}
-          >
-            <Navigation2 className={`${isCompact ? "w-4 h-4" : "w-5 h-5"}`} />
-          </button>
-
-          {/* Map style / layer picker */}
-          <div className="relative">
-            <button
-              onClick={() => setStyleMenuOpen((p) => !p)}
-              aria-label="Map style"
-              title="Change map style"
-              className={`${isCompact ? "w-10 h-10" : "w-11 h-11"} glass-panel rounded-xl flex items-center justify-center transition-all shadow-md ${styleMenuOpen ? "bg-primary text-primary-foreground" : "hover:bg-primary/10"}`}
+            <div
+              className="absolute right-3 sm:right-4 flex flex-col gap-2 z-30"
+              style={{
+                bottom: "calc(10.5rem + env(safe-area-inset-bottom, 0px))",
+              }}
             >
-              <Layers className={`${isCompact ? "w-4 h-4" : "w-5 h-5"}`} />
-            </button>
-
-            {/* Style picker dropdown */}
-            {styleMenuOpen && (
-              <div
-                className={`absolute right-14 top-0 glass-panel rounded-2xl p-2 shadow-2xl flex flex-col gap-1 min-w-[140px] z-50 ${isCompact ? "right-12" : ""}`}
+              {/* Compass (rotates with map bearing) */}
+              <button
+                onClick={resetNorth}
+                aria-label="Reset north"
+                title="Tap to reset north"
+                className={`${isCompact ? "w-10 h-10" : "w-11 h-11"} glass-panel rounded-xl flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all shadow-md overflow-hidden`}
               >
-                {(Object.keys(MAP_STYLES) as MapStyleKey[]).map((key) => {
-                  const s = MAP_STYLES[key];
-                  const Icon = s.icon;
-                  return (
-                    <button
-                      key={key}
-                      onClick={() => switchStyle(key)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${mapStyle === key ? "bg-primary text-primary-foreground" : "hover:bg-primary/10"}`}
-                    >
-                      <Icon className="w-4 h-4 shrink-0" />
-                      {s.label}
-                    </button>
-                  );
-                })}
-                <div className="border-t border-primary/10 my-1" />
+                <Compass
+                  className={`${isCompact ? "w-4 h-4" : "w-5 h-5"}`}
+                  style={compassStyle}
+                />
+              </button>
+
+              {/* 2D / 3D toggle */}
+              <button
+                onClick={toggle3D}
+                aria-label="Toggle 3D view"
+                title={is3D ? "Switch to 2D" : "Switch to 3D"}
+                className={`${isCompact ? "w-10 h-10" : "w-11 h-11"} glass-panel rounded-xl flex items-center justify-center transition-all shadow-md text-xs font-black ${is3D ? "bg-primary text-primary-foreground" : "hover:bg-primary/10"}`}
+              >
+                <Box className={`${isCompact ? "w-4 h-4" : "w-5 h-5"}`} />
+              </button>
+
+              {/* Follow mode (auto-rotate with heading) */}
+              <button
+                onClick={toggleFollowMode}
+                aria-label="Toggle follow mode"
+                title={
+                  followMode ? "Disable follow mode" : "Enable follow mode"
+                }
+                className={`${isCompact ? "w-10 h-10" : "w-11 h-11"} glass-panel rounded-xl flex items-center justify-center transition-all shadow-md ${followMode ? "bg-blue-500 text-white" : "hover:bg-blue-500/10"}`}
+              >
+                <Navigation2
+                  className={`${isCompact ? "w-4 h-4" : "w-5 h-5"}`}
+                />
+              </button>
+
+              {/* Map style / layer picker */}
+              <div className="relative">
                 <button
-                  onClick={toggleTraffic}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${trafficOn ? "bg-green-500 text-white" : "hover:bg-primary/10"}`}
+                  onClick={() => setStyleMenuOpen((p) => !p)}
+                  aria-label="Map style"
+                  title="Change map style"
+                  className={`${isCompact ? "w-10 h-10" : "w-11 h-11"} glass-panel rounded-xl flex items-center justify-center transition-all shadow-md ${styleMenuOpen ? "bg-primary text-primary-foreground" : "hover:bg-primary/10"}`}
                 >
-                  <span className="text-base">🚦</span>
-                  Traffic {trafficOn ? "ON" : "OFF"}
+                  <Layers className={`${isCompact ? "w-4 h-4" : "w-5 h-5"}`} />
                 </button>
+
+                {/* Style picker dropdown */}
+                {styleMenuOpen && (
+                  <div
+                    className={`absolute right-14 top-0 glass-panel rounded-2xl p-2 shadow-2xl flex flex-col gap-1 min-w-[140px] z-50 ${isCompact ? "right-12" : ""}`}
+                  >
+                    {(Object.keys(MAP_STYLES) as MapStyleKey[]).map((key) => {
+                      const s = MAP_STYLES[key];
+                      const Icon = s.icon;
+                      return (
+                        <button
+                          key={key}
+                          onClick={() => switchStyle(key)}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${mapStyle === key ? "bg-primary text-primary-foreground" : "hover:bg-primary/10"}`}
+                        >
+                          <Icon className="w-4 h-4 shrink-0" />
+                          {s.label}
+                        </button>
+                      );
+                    })}
+                    <div className="border-t border-primary/10 my-1" />
+                    <button
+                      onClick={toggleTraffic}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all ${trafficOn ? "bg-green-500 text-white" : "hover:bg-primary/10"}`}
+                    >
+                      <span className="text-base">🚦</span>
+                      Traffic {trafficOn ? "ON" : "OFF"}
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          {/* Recenter */}
-          <button
-            onClick={handleRecenter}
-            aria-label="Recenter map"
-            className={`${isCompact ? "w-10 h-10" : "w-11 h-11"} glass-panel rounded-xl flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all shadow-md`}
-          >
-            <Locate
-              className={`${isCompact ? "w-4 h-4" : "w-5 h-5"} text-blue-500`}
-            />
-          </button>
+              {/* Recenter */}
+              <button
+                onClick={handleRecenter}
+                aria-label="Recenter map"
+                className={`${isCompact ? "w-10 h-10" : "w-11 h-11"} glass-panel rounded-xl flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all shadow-md`}
+              >
+                <Locate
+                  className={`${isCompact ? "w-4 h-4" : "w-5 h-5"} text-blue-500`}
+                />
+              </button>
 
-          {/* Zoom + */}
-          <button
-            onClick={handleZoomIn}
-            aria-label="Zoom in"
-            className={`${isCompact ? "w-10 h-10" : "w-11 h-11"} glass-panel rounded-xl flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all shadow-md font-bold text-lg`}
-          >
-            <Plus className={`${isCompact ? "w-4 h-4" : "w-5 h-5"}`} />
-          </button>
+              {/* Zoom + */}
+              <button
+                onClick={handleZoomIn}
+                aria-label="Zoom in"
+                className={`${isCompact ? "w-10 h-10" : "w-11 h-11"} glass-panel rounded-xl flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all shadow-md font-bold text-lg`}
+              >
+                <Plus className={`${isCompact ? "w-4 h-4" : "w-5 h-5"}`} />
+              </button>
 
-          {/* Zoom - */}
-          <button
-            onClick={handleZoomOut}
-            aria-label="Zoom out"
-            className={`${isCompact ? "w-10 h-10" : "w-11 h-11"} glass-panel rounded-xl flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all shadow-md font-bold text-lg`}
-          >
-            <Minus className={`${isCompact ? "w-4 h-4" : "w-5 h-5"}`} />
-          </button>
-        </div>
+              {/* Zoom - */}
+              <button
+                onClick={handleZoomOut}
+                aria-label="Zoom out"
+                className={`${isCompact ? "w-10 h-10" : "w-11 h-11"} glass-panel rounded-xl flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all shadow-md font-bold text-lg`}
+              >
+                <Minus className={`${isCompact ? "w-4 h-4" : "w-5 h-5"}`} />
+              </button>
+            </div>
 
-        {/* ── Report Hazard button ────────────────────────────────────────── */}
-        <div
-          className="absolute left-3 sm:left-4 z-30"
-          style={{ bottom: "calc(5.5rem + env(safe-area-inset-bottom, 0px))" }}
-        >
-          <button
-            onClick={() => setReportModalOpen(true)}
-            aria-label="Report hazard"
-            className="w-14 h-14 glass-panel rounded-full flex flex-col items-center justify-center bg-red-500/10 border-red-500/20 hover:bg-red-500 hover:text-white transition-all duration-300 shadow-xl hover:scale-110"
-          >
-            <AlertTriangle className="w-6 h-6 animate-pulse" />
-            <span className="text-[8px] font-black uppercase tracking-tighter mt-0.5">
-              Report
-            </span>
-          </button>
-        </div>
+            {/* ── Report Hazard button ────────────────────────────────────────── */}
+            <div
+              className="absolute left-3 sm:left-4 z-30"
+              style={{
+                bottom: "calc(5.5rem + env(safe-area-inset-bottom, 0px))",
+              }}
+            >
+              <button
+                onClick={() => setReportModalOpen(true)}
+                aria-label="Report hazard"
+                className="w-14 h-14 glass-panel rounded-full flex flex-col items-center justify-center bg-red-500/10 border-red-500/20 hover:bg-red-500 hover:text-white transition-all duration-300 shadow-xl hover:scale-110"
+              >
+                <AlertTriangle className="w-6 h-6 animate-pulse" />
+                <span className="text-[8px] font-black uppercase tracking-tighter mt-0.5">
+                  Report
+                </span>
+              </button>
+            </div>
 
-        {/* ── Emergency SOS button ────────────────────────────────────────── */}
-        <div
-          className="absolute right-3 sm:right-4 z-40"
-          style={{ bottom: "calc(5.5rem + env(safe-area-inset-bottom, 0px))" }}
-        >
-          <EmergencySOSButton userLocation={userLocation} />
-        </div>
+            {/* ── Emergency SOS button ────────────────────────────────────────── */}
+            <div
+              className="absolute right-3 sm:right-4 z-40"
+              style={{
+                bottom: "calc(5.5rem + env(safe-area-inset-bottom, 0px))",
+              }}
+            >
+              <EmergencySOSButton userLocation={userLocation} />
+            </div>
 
-        {/* ── Start / End Trip button ─────────────────────────────────────── */}
-        <div
-          className="absolute left-0 right-0 flex justify-center px-4 z-30"
-          style={{ bottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))" }}
-        >
-          <button
-            onClick={tripActive ? endTrip : startTrip}
-            className={`btn-premium flex items-center gap-3 text-base sm:text-xl py-4 px-10 sm:py-5 sm:px-16 shadow-2xl transition-all ${tripActive ? "bg-destructive text-white hover:shadow-destructive/40" : ""}`}
-          >
-            {tripActive ? (
-              <>
-                <MapPin className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse" /> End
-                Trip
-              </>
-            ) : (
-              <>
-                <Navigation className="w-5 h-5 sm:w-6 sm:h-6" /> Start Trip
-              </>
-            )}
-          </button>
-        </div>
+            {/* ── Start / End Trip button ─────────────────────────────────────── */}
+            <div
+              className="absolute left-0 right-0 flex justify-center px-4 z-30"
+              style={{
+                bottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))",
+              }}
+            >
+              <button
+                onClick={tripActive ? endTrip : startTrip}
+                className={`btn-premium flex items-center gap-3 text-base sm:text-xl py-4 px-10 sm:py-5 sm:px-16 shadow-2xl transition-all ${tripActive ? "bg-destructive text-white hover:shadow-destructive/40" : ""}`}
+              >
+                {tripActive ? (
+                  <>
+                    <MapPin className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse" />{" "}
+                    End Trip
+                  </>
+                ) : (
+                  <>
+                    <Navigation className="w-5 h-5 sm:w-6 sm:h-6" /> Start Trip
+                  </>
+                )}
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
       {/* ── Alert Panel ───────────────────────────────────────────────────── */}
-      <div
-        className={`glass-panel border-t border-primary/10 transition-all duration-400 rounded-t-3xl ${panelOpen ? "max-h-72" : "max-h-14"} overflow-hidden z-30 flex-shrink-0`}
-      >
-        <button
-          onClick={() => setPanelOpen((p) => !p)}
-          className="w-full flex items-center justify-between px-5 py-4 sm:px-8 group"
+      {!tripSummary && (
+        <div
+          className={`glass-panel border-t border-primary/10 transition-all duration-400 rounded-t-3xl ${panelOpen ? "max-h-72" : "max-h-14"} overflow-hidden z-30 flex-shrink-0`}
         >
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-yellow-500 animate-pulse" />
-            <span className="font-bold text-sm tracking-tight">
-              ALERTS ({mockAlerts.length + backendAlerts.length})
-            </span>
-          </div>
-          <div className="w-7 h-7 rounded-full bg-primary/5 flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-            {panelOpen ? (
-              <ChevronDown className="w-4 h-4" />
-            ) : (
-              <ChevronUp className="w-4 h-4" />
-            )}
-          </div>
-        </button>
+          <button
+            onClick={() => setPanelOpen((p) => !p)}
+            className="w-full flex items-center justify-between px-5 py-4 sm:px-8 group"
+          >
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-yellow-500 animate-pulse" />
+              <span className="font-bold text-sm tracking-tight">
+                ALERTS ({mockAlerts.length + backendAlerts.length})
+              </span>
+            </div>
+            <div className="w-7 h-7 rounded-full bg-primary/5 flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+              {panelOpen ? (
+                <ChevronDown className="w-4 h-4" />
+              ) : (
+                <ChevronUp className="w-4 h-4" />
+              )}
+            </div>
+          </button>
 
-        <div className="px-4 pb-6 space-y-2 overflow-y-auto max-h-56 sm:px-6">
-          {mockAlerts.map((alert) => {
-            const Icon = alertIcons[alert.type];
-            return (
-              <button
-                key={alert.id}
-                onClick={() => navigate(`/alert/${alert.id}`)}
-                className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/15 border border-white/10 transition-all text-left"
-              >
-                <div className="w-9 h-9 rounded-lg bg-background/50 flex items-center justify-center shrink-0">
-                  <Icon className="w-4 h-4 text-primary" />
-                </div>
-                <div className="min-w-0">
-                  <div className="font-bold text-xs text-foreground truncate">
-                    {alert.title}
+          <div className="px-4 pb-6 space-y-2 overflow-y-auto max-h-56 sm:px-6">
+            {mockAlerts.map((alert) => {
+              const Icon = alertIcons[alert.type];
+              return (
+                <button
+                  key={alert.id}
+                  onClick={() => navigate(`/alert/${alert.id}`)}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/15 border border-white/10 transition-all text-left"
+                >
+                  <div className="w-9 h-9 rounded-lg bg-background/50 flex items-center justify-center shrink-0">
+                    <Icon className="w-4 h-4 text-primary" />
                   </div>
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    {alert.type} · {alert.timeDetected}
+                  <div className="min-w-0">
+                    <div className="font-bold text-xs text-foreground truncate">
+                      {alert.title}
+                    </div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                      {alert.type} · {alert.timeDetected}
+                    </div>
                   </div>
-                </div>
-              </button>
-            );
-          })}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── Hazard Report Modal ───────────────────────────────────────────── */}
       {reportModalOpen && (
