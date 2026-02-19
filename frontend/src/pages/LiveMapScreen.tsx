@@ -103,12 +103,7 @@ const alertIcons: Record<Alert["type"], typeof AlertTriangle> = {
   "Road Block": AlertTriangle,
 };
 
-const alertPositions: [number, number][] = [
-  [-73.985, 40.758],
-  [-73.975, 40.752],
-  [-73.99, 40.745],
-  [-73.98, 40.762],
-];
+const alertPositions: [number, number][] = [];
 
 // ─── Haversine distance (km) ──────────────────────────────────────────────────
 const haversine = (a: [number, number], b: [number, number]): number => {
@@ -123,7 +118,7 @@ const haversine = (a: [number, number], b: [number, number]): number => {
   return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
 };
 
-const defaultLocation: [number, number] = [-73.985, 40.752];
+const defaultLocation: [number, number] = [78.4867, 17.385]; // Changed to Hyderabad/Generic India as a more likely starting point or fallback
 
 // ─── Helper: create/update accuracy circle GeoJSON ───────────────────────────
 function accuracyCircleGeoJSON(
@@ -191,6 +186,10 @@ const LiveMapScreen = () => {
   const [arMode, setArMode] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [backendAlerts, setBackendAlerts] = useState<any[]>([]);
+  const [activeAlerts, setActiveAlerts] = useState<
+    (Alert & { coords: [number, number] })[]
+  >([]);
+  const alertMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const [styleLayerReady, setStyleLayerReady] = useState(false);
 
   // Google Maps-like feature states
@@ -396,45 +395,8 @@ const LiveMapScreen = () => {
         });
       }
 
-      // Alert markers
-      mockAlerts.forEach((alert, i) => {
-        if (i >= alertPositions.length) return;
-        const el = document.createElement("div");
-        const colors: Record<string, string> = {
-          Accident: "#EF4444",
-          Traffic: "#F59E0B",
-          Weather: "#3B82F6",
-          "Road Block": "#8B5CF6",
-        };
-        const icons: Record<string, string> = {
-          Accident: "⚠",
-          Traffic: "▲",
-          Weather: "☁",
-          "Road Block": "✕",
-        };
-        const color = colors[alert.type] || "#6B7280";
-        el.style.cssText = `
-        width:32px;height:32px;border-radius:50%;
-        background:${color};
-        border:2.5px solid white;
-        display:flex;align-items:center;justify-content:center;
-        cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.25);
-        font-size:14px;color:white;transition:transform 0.2s ease;
-      `;
-        el.textContent = icons[alert.type] || "•";
-        el.addEventListener(
-          "mouseenter",
-          () => (el.style.transform = "scale(1.2)"),
-        );
-        el.addEventListener(
-          "mouseleave",
-          () => (el.style.transform = "scale(1)"),
-        );
-        el.addEventListener("click", () => navigate(`/alert/${alert.id}`));
-        new mapboxgl.Marker({ element: el })
-          .setLngLat(alertPositions[i])
-          .addTo(map);
-      });
+      // Static NY mock alerts removed in favor of dynamic user-centric alerts
+      // (Managed by separate useEffect and activeAlerts state)
 
       // User location pulsing blue dot
       if (!userMarkerRef.current) {
@@ -562,7 +524,7 @@ const LiveMapScreen = () => {
           }
         }
 
-        // First GPS fix → fly to user
+        // First GPS fix → fly to user + Generate local mock alerts
         if (!gpsActive && map) {
           map.flyTo({
             center: coords,
@@ -570,6 +532,16 @@ const LiveMapScreen = () => {
             duration: 1500,
             essential: true,
           });
+
+          // Generate 4 mock alerts near the user's current location
+          const localAlerts = mockAlerts.map((base, i) => ({
+            ...base,
+            coords: [
+              coords[0] + (Math.random() - 0.5) * 0.015,
+              coords[1] + (Math.random() - 0.5) * 0.015,
+            ] as [number, number],
+          }));
+          setActiveAlerts(localAlerts);
         }
       },
       () => setGpsActive(false),
