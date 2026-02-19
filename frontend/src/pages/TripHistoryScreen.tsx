@@ -214,7 +214,7 @@ const TripHistoryScreen = () => {
         {/* Header */}
         <header className="flex items-center gap-5">
           <button
-            onClick={() => navigate("/home")}
+            onClick={() => navigate("/#home")}
             className="w-12 h-12 glass-panel rounded-2xl flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all duration-300 shrink-0"
             aria-label="Go back"
           >
