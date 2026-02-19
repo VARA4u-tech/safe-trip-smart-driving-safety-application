@@ -37,7 +37,7 @@ const SettingsScreen = () => {
         {/* Superior Header */}
         <header className="flex items-center gap-6">
           <button
-            onClick={() => navigate("/#home")}
+            onClick={() => navigate("/dashboard")}
             className="w-12 h-12 glass-panel rounded-2xl flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all duration-300"
             aria-label="Go back"
           >

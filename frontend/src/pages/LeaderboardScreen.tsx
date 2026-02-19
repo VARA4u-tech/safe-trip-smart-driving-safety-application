@@ -97,7 +97,7 @@ const LeaderboardScreen = () => {
       <div className="w-full max-w-2xl mx-auto space-y-10 pb-20">
         <header className="flex items-center gap-6">
           <button
-            onClick={() => navigate("/home")}
+            onClick={() => navigate("/dashboard")}
             className="w-12 h-12 glass-panel rounded-2xl flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all duration-300"
           >
             <ArrowLeft className="w-6 h-6" />
