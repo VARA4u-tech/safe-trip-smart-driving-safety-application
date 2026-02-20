@@ -147,6 +147,7 @@ function accuracyCircleGeoJSON(
 
 // ─────────────────────────────────────────────────────────────────────────────
 const LiveMapScreen = () => {
+  const { session, user } = useAuth();
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
   const isCompact = isMobile || isTablet;
@@ -248,13 +249,17 @@ const LiveMapScreen = () => {
 
   // ─── Fetch initial alerts from backend ───────────────────────────────────
   useEffect(() => {
-    fetch(`${BACKEND_URL}/api/alerts`)
+    const headers: Record<string, string> = {};
+    if (session?.access_token) {
+      headers["Authorization"] = `Bearer ${session.access_token}`;
+    }
+    fetch(`${BACKEND_URL}/api/alerts`, { headers })
       .then((r) => r.json())
       .then((d) => {
         setBackendAlerts(d);
       })
       .catch(() => {});
-  }, []);
+  }, [session]);
 
   // ─── Initialise map ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -478,11 +483,17 @@ const LiveMapScreen = () => {
         // Send to backend
         const currentSpeedKmh = (pos.coords.speed || 0) * 3.6;
         if (tripActiveRef.current) {
+          const headers: Record<string, string> = {
+            "Content-Type": "application/json",
+          };
+          if (session?.access_token) {
+            headers["Authorization"] = `Bearer ${session.access_token}`;
+          }
           fetch(`${BACKEND_URL}/api/location`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers,
             body: JSON.stringify({
-              userId: "user_123",
+              userId: user?.id || "anonymous",
               latitude: coords[1],
               longitude: coords[0],
               speed: currentSpeedKmh,
@@ -760,13 +771,20 @@ const LiveMapScreen = () => {
 
   const handleReportHazard = useCallback(
     (type: string) => {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
       fetch(`${BACKEND_URL}/api/report-hazard`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           type,
           severity: "medium",
           location: `${userLocation[1].toFixed(4)}, ${userLocation[0].toFixed(4)}`,
+          userId: user?.id || "anonymous",
           timestamp: new Date(),
         }),
       })

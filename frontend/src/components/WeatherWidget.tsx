@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { BACKEND_URL } from "@/lib/constants";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Cloud,
   CloudRain,
@@ -20,6 +21,7 @@ interface WeatherData {
 // BACKEND_URL is now imported from @/lib/constants
 
 export default function WeatherWidget() {
+  const { session } = useAuth();
   const [data, setData] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -27,10 +29,15 @@ export default function WeatherWidget() {
   useEffect(() => {
     const fetchWeather = async () => {
       try {
+        const headers: Record<string, string> = {};
+        if (session?.access_token) {
+          headers["Authorization"] = `Bearer ${session.access_token}`;
+        }
         // Default to Hyderabad/Central location if no GPS yet, or use real coords if passed props
         // For now, we'll fetch generic location or user's last known
         const res = await fetch(
           `${BACKEND_URL}/api/weather?lat=17.385&lon=78.486`,
+          { headers },
         );
         const json = await res.json();
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Brain, ShieldCheck, ShieldAlert, BadgeAlert } from "lucide-react";
 import { useIsMobile, useIsTablet } from "@/hooks/use-mobile";
 import { BACKEND_URL } from "@/lib/constants";
+import { useAuth } from "@/hooks/useAuth";
 
 interface SafetyPrediction {
   probability: number;
@@ -21,6 +22,7 @@ export default function MLSafetyWidget({
   weatherCondition,
   trafficLevel,
 }: Props) {
+  const { session } = useAuth();
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
   const isCompact = isMobile || isTablet;
@@ -36,14 +38,20 @@ export default function MLSafetyWidget({
 
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentSpeedKmh, weatherCondition, trafficLevel]);
+  }, [currentSpeedKmh, weatherCondition, trafficLevel, session]);
 
   const fetchPrediction = async () => {
     try {
       setLoading(true);
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
       const res = await fetch(`${BACKEND_URL}/api/predict-accident`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           speedKmh: currentSpeedKmh,
           weatherCondition: weatherCondition || "Clear",

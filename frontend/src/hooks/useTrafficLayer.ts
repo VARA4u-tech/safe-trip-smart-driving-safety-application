@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import { BACKEND_URL } from "@/lib/constants";
+import { useAuth } from "./useAuth";
 
 export function useTrafficIncidents(
   map: mapboxgl.Map | null,
   userLocation: [number, number],
 ) {
+  const { session } = useAuth();
   const [incidents, setIncidents] = useState<any[]>([]);
 
   useEffect(() => {
@@ -75,8 +77,13 @@ export function useTrafficIncidents(
     // 2. Fetch Incidents
     const fetchIncidents = async () => {
       try {
+        const headers: Record<string, string> = {};
+        if (session?.access_token) {
+          headers["Authorization"] = `Bearer ${session.access_token}`;
+        }
         const res = await fetch(
           `${BACKEND_URL}/api/traffic/incidents?lat=${userLocation[1]}&lon=${userLocation[0]}&radius=10000`,
+          { headers },
         );
         const data = await res.json();
 
@@ -91,10 +98,6 @@ export function useTrafficIncidents(
                 inc.geometry.coordinates[0],
                 inc.geometry.coordinates[1],
               ],
-              // Note: TomTom/Mapbox return [lon, lat] usually.
-              // If backend parses it, check structure.
-              // My backend traffic.js route for Mapbox doesn't implement incidents yet!
-              // Ah, I need to check backend/routes/traffic.js again.
             },
             properties: {
               type: inc.type,
@@ -122,5 +125,7 @@ export function useTrafficIncidents(
     const interval = setInterval(fetchIncidents, 60000); // refresh every minute
 
     return () => clearInterval(interval);
-  }, [map, userLocation]); // Re-run if map ready or user moves (handled by fetch logic)
+  }, [map, userLocation, session]);
+
+  return incidents;
 }

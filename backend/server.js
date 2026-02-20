@@ -93,9 +93,9 @@ const weatherRoutes = require("./routes/weather");
 const trafficRoutes = require("./routes/traffic");
 const newsRoutes = require("./routes/news");
 
-app.use("/api/weather", weatherRoutes);
-app.use("/api/traffic", trafficRoutes);
-app.use("/api/news", newsRoutes);
+app.use("/api/weather", authMiddleware, weatherRoutes);
+app.use("/api/traffic", authMiddleware, trafficRoutes);
+app.use("/api/news", authMiddleware, newsRoutes);
 
 // 🧠 Database Initialization (Hybrid Mode)
 let supabase = null;
@@ -318,7 +318,7 @@ app.post(
 // ---------------------------------------------------------
 const { predictRisk } = require("./ml/accident_predictor");
 
-app.post("/api/predict-accident", (req, res) => {
+app.post("/api/predict-accident", authMiddleware, (req, res) => {
   const {
     speedKmh,
     weatherCondition,
@@ -343,6 +343,14 @@ app.post("/api/predict-accident", (req, res) => {
   );
 
   res.json(prediction);
+});
+
+// 5.5️⃣ 404 HANDLER (JSON)
+// ---------------------------------------------------------
+app.use((req, res, next) => {
+  const err = new Error(`Route ${req.originalUrl} not found`);
+  err.status = 404;
+  next(err);
 });
 
 // 6️⃣ GLOBAL ERROR HANDLER

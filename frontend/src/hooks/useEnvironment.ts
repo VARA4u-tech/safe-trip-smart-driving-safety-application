@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { BACKEND_URL } from "@/lib/constants";
+import { useAuth } from "./useAuth";
 
 export interface EnvironmentData {
   weather: {
@@ -15,6 +16,7 @@ export interface EnvironmentData {
 }
 
 export function useEnvironment(lat: number, lon: number) {
+  const { session } = useAuth();
   const [data, setData] = useState<EnvironmentData>({
     weather: { temp: 25, condition: "Clear", riskLevel: "LOW" },
     traffic: { congestionLabel: "Moderate", avgSpeedKmh: 40 },
@@ -26,9 +28,18 @@ export function useEnvironment(lat: number, lon: number) {
 
     const fetchData = async () => {
       try {
+        const headers: Record<string, string> = {};
+        if (session?.access_token) {
+          headers["Authorization"] = `Bearer ${session.access_token}`;
+        }
+
         const [weatherRes, trafficRes] = await Promise.all([
-          fetch(`${BACKEND_URL}/api/weather?lat=${lat}&lon=${lon}`),
-          fetch(`${BACKEND_URL}/api/traffic?lat=${lat}&lon=${lon}`),
+          fetch(`${BACKEND_URL}/api/weather?lat=${lat}&lon=${lon}`, {
+            headers,
+          }),
+          fetch(`${BACKEND_URL}/api/traffic?lat=${lat}&lon=${lon}`, {
+            headers,
+          }),
         ]);
 
         const weather = await weatherRes.json();
