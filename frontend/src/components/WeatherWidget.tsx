@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 import { BACKEND_URL } from "@/lib/constants";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -18,9 +18,7 @@ interface WeatherData {
   message: string;
 }
 
-// BACKEND_URL is now imported from @/lib/constants
-
-export default function WeatherWidget() {
+const WeatherWidget = () => {
   const { session } = useAuth();
   const [data, setData] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,8 +31,6 @@ export default function WeatherWidget() {
         if (session?.access_token) {
           headers["Authorization"] = `Bearer ${session.access_token}`;
         }
-        // Default to Hyderabad/Central location if no GPS yet, or use real coords if passed props
-        // For now, we'll fetch generic location or user's last known
         const res = await fetch(
           `${BACKEND_URL}/api/weather?lat=17.385&lon=78.486`,
           { headers },
@@ -43,7 +39,7 @@ export default function WeatherWidget() {
 
         setData({
           temp: json.temp,
-          condition: json.condition, // Clear, Rain, etc.
+          condition: json.condition,
           location: json.city,
           riskLevel: json.drivingRisk?.level || "LOW",
           message: json.drivingRisk?.message || "",
@@ -56,12 +52,11 @@ export default function WeatherWidget() {
     };
 
     fetchWeather();
-    const interval = setInterval(fetchWeather, 300000); // 5 mins
+    const interval = setInterval(fetchWeather, 300000);
     return () => clearInterval(interval);
-  }, []);
+  }, [session]);
 
-  if (loading) return null;
-  if (!data) return null;
+  if (loading || !data) return null;
 
   const getIcon = () => {
     const c = data.condition.toLowerCase();
@@ -98,4 +93,6 @@ export default function WeatherWidget() {
       </div>
     </div>
   );
-}
+};
+
+export default memo(WeatherWidget);

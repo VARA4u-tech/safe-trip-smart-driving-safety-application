@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -144,6 +144,38 @@ function accuracyCircleGeoJSON(
     geometry: { type: "Polygon", coordinates: [coords] },
   };
 }
+
+// ─── Compass Button Component (extracted for performance) ──────────────────
+const CompassButton = memo(
+  ({
+    bearing,
+    onReset,
+    isCompact,
+  }: {
+    bearing: number;
+    onReset: () => void;
+    isCompact: boolean;
+  }) => {
+    const compassStyle: React.CSSProperties = {
+      transform: `rotate(${-bearing}deg)`,
+      transition: "transform 0.2s ease",
+    };
+
+    return (
+      <button
+        onClick={onReset}
+        aria-label="Reset north"
+        title="Tap to reset north"
+        className={`${isCompact ? "w-10 h-10" : "w-11 h-11"} glass-panel rounded-xl flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all shadow-md overflow-hidden`}
+      >
+        <Compass
+          className={`${isCompact ? "w-4 h-4" : "w-5 h-5"}`}
+          style={compassStyle}
+        />
+      </button>
+    );
+  },
+);
 
 // ─────────────────────────────────────────────────────────────────────────────
 const LiveMapScreen = () => {
@@ -798,12 +830,6 @@ const LiveMapScreen = () => {
     [userLocation],
   );
 
-  // ─── Compass rotation style ───────────────────────────────────────────────
-  const compassStyle: React.CSSProperties = {
-    transform: `rotate(${-bearing}deg)`,
-    transition: "transform 0.2s ease",
-  };
-
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────
@@ -937,18 +963,11 @@ const LiveMapScreen = () => {
                 bottom: "calc(10.5rem + env(safe-area-inset-bottom, 0px))",
               }}
             >
-              {/* Compass (rotates with map bearing) */}
-              <button
-                onClick={resetNorth}
-                aria-label="Reset north"
-                title="Tap to reset north"
-                className={`${isCompact ? "w-10 h-10" : "w-11 h-11"} glass-panel rounded-xl flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all shadow-md overflow-hidden`}
-              >
-                <Compass
-                  className={`${isCompact ? "w-4 h-4" : "w-5 h-5"}`}
-                  style={compassStyle}
-                />
-              </button>
+              <CompassButton
+                bearing={bearing}
+                onReset={resetNorth}
+                isCompact={isCompact}
+              />
 
               {/* 2D / 3D toggle */}
               <button

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 import { Brain, ShieldCheck, ShieldAlert, BadgeAlert } from "lucide-react";
 import { useIsMobile, useIsTablet } from "@/hooks/use-mobile";
 import { BACKEND_URL } from "@/lib/constants";
@@ -17,11 +17,11 @@ interface Props {
   trafficLevel: string;
 }
 
-export default function MLSafetyWidget({
+const MLSafetyWidget = ({
   currentSpeedKmh,
   weatherCondition,
   trafficLevel,
-}: Props) {
+}: Props) => {
   const { session } = useAuth();
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
@@ -157,4 +157,6 @@ export default function MLSafetyWidget({
       </div>
     </div>
   );
-}
+};
+
+export default memo(MLSafetyWidget);

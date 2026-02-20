@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Compass, Gauge, Clock, Route } from "lucide-react";
 import { useIsMobile, useIsTablet } from "@/hooks/use-mobile";
 
@@ -22,11 +23,6 @@ const formatDuration = (totalSec: number): string => {
   const s = Math.floor(totalSec % 60);
   if (h > 0) return `${h}h ${m.toString().padStart(2, "0")}m`;
   return `${m}:${s.toString().padStart(2, "0")}`;
-};
-
-const hudPillStyle = {
-  background: "hsl(38, 30%, 93%, 0.92)",
-  boxShadow: "inset 0 1px 2px rgba(139,115,85,0.15), 0 1px 3px rgba(0,0,0,0.1)",
 };
 
 const SpeedHeadingHUD = ({
@@ -111,4 +107,4 @@ const SpeedHeadingHUD = ({
   );
 };
 
-export default SpeedHeadingHUD;
+export default memo(SpeedHeadingHUD);
