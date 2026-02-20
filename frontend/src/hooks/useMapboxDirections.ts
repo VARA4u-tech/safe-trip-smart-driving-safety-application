@@ -20,6 +20,12 @@ export const useMapboxDirections = ({
   const [loading, setLoading] = useState(false);
   const destMarkerRef = useRef<mapboxgl.Marker | null>(null);
 
+  // Safety check helper
+  const isMapReady = useCallback(() => {
+    const map = mapRef.current;
+    return map && map.getStyle() && map.isStyleLoaded();
+  }, [mapRef]);
+
   const fetchRoute = useCallback(
     async (
       origin: [number, number],
@@ -69,15 +75,16 @@ export const useMapboxDirections = ({
 
         // Draw route on map
         const map = mapRef.current;
-        if (map) {
-          if (map.getSource("nav-route")) {
-            (map.getSource("nav-route") as mapboxgl.GeoJSONSource).setData({
+        if (isMapReady()) {
+          const m = map!;
+          if (m.getSource("nav-route")) {
+            (m.getSource("nav-route") as mapboxgl.GeoJSONSource).setData({
               type: "Feature",
               properties: {},
               geometry: r.geometry,
             });
           } else {
-            map.addSource("nav-route", {
+            m.addSource("nav-route", {
               type: "geojson",
               data: {
                 type: "Feature",
@@ -85,7 +92,7 @@ export const useMapboxDirections = ({
                 geometry: r.geometry,
               },
             });
-            map.addLayer({
+            m.addLayer({
               id: "nav-route-line",
               type: "line",
               source: "nav-route",
@@ -104,7 +111,7 @@ export const useMapboxDirections = ({
             (b, c) => b.extend(c),
             new mapboxgl.LngLatBounds(coords[0], coords[0]),
           );
-          map.fitBounds(bounds, { padding: 80, duration: 1200 });
+          m.fitBounds(bounds, { padding: 80, duration: 1200 });
 
           // Add Destination Marker
           destMarkerRef.current?.remove();
@@ -124,14 +131,14 @@ export const useMapboxDirections = ({
           const lastCoord = coords[coords.length - 1];
           destMarkerRef.current = new mapboxgl.Marker({ element: el })
             .setLngLat(lastCoord)
-            .addTo(map);
+            .addTo(m);
         }
       } catch (e) {
         console.error("Directions error:", e);
       }
       setLoading(false);
     },
-    [accessToken, mapRef],
+    [accessToken, mapRef, isMapReady],
   );
 
   const clearRoute = useCallback(() => {
@@ -145,12 +152,12 @@ export const useMapboxDirections = ({
     localStorage.removeItem("active_nav_dest");
     localStorage.removeItem("active_nav_step");
 
-    const map = mapRef.current;
-    if (map) {
-      if (map.getLayer("nav-route-line")) map.removeLayer("nav-route-line");
-      if (map.getSource("nav-route")) map.removeSource("nav-route");
+    if (isMapReady()) {
+      const m = mapRef.current!;
+      if (m.getLayer("nav-route-line")) m.removeLayer("nav-route-line");
+      if (m.getSource("nav-route")) m.removeSource("nav-route");
     }
-  }, [mapRef]);
+  }, [mapRef, isMapReady]);
 
   // Haversine distance calculation (km)
   const haversine = (a: [number, number], b: [number, number]): number => {
@@ -191,8 +198,6 @@ export const useMapboxDirections = ({
     let coordCount = 0;
     for (let stepIdx = 0; stepIdx < route.steps.length; stepIdx++) {
       const step = route.steps[stepIdx];
-      // Approximate: steps contribute roughly to route geometry based on their distance ratio
-      // For now, we'll track progression through the geometry
       const stepLength = Math.round(
         (step.distance / route.distance) * route.geometry.coordinates.length,
       );
@@ -219,7 +224,7 @@ export const useMapboxDirections = ({
 
       const map = mapRef.current;
       const drawSavedRoute = () => {
-        if (!map) return;
+        if (!map || !map.getStyle()) return;
         if (!map.getSource("nav-route")) {
           map.addSource("nav-route", {
             type: "geojson",

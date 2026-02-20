@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 import mapboxgl from "mapbox-gl";
 import { BACKEND_URL } from "@/lib/constants";
 import { useAuth } from "./useAuth";
@@ -13,35 +13,42 @@ export function useTrafficIncidents(
   useEffect(() => {
     if (!map || !userLocation) return;
 
+    // Safety check to ensure we don't call Mapbox methods on an uninitialized/partially-destroyed style
+    const isMapReady = () => map && map.getStyle() && map.isStyleLoaded();
+
     const initLayer = () => {
+      if (!isMapReady()) return;
+
       if (!map.getSource("traffic-incidents")) {
         map.addSource("traffic-incidents", {
           type: "geojson",
           data: { type: "FeatureCollection", features: [] },
         });
 
-        map.addLayer({
-          id: "traffic-incidents-layer",
-          type: "circle",
-          source: "traffic-incidents",
-          minzoom: 11,
-          paint: {
-            "circle-radius": 8,
-            "circle-color": [
-              "match",
-              ["get", "type"],
-              "Accident",
-              "#EF4444",
-              "Road Works",
-              "#F59E0B",
-              "Traffic Jam",
-              "#DC2626",
-              "#3B82F6",
-            ],
-            "circle-stroke-width": 2,
-            "circle-stroke-color": "#FFFFFF",
-          },
-        });
+        if (!map.getLayer("traffic-incidents-layer")) {
+          map.addLayer({
+            id: "traffic-incidents-layer",
+            type: "circle",
+            source: "traffic-incidents",
+            minzoom: 11,
+            paint: {
+              "circle-radius": 8,
+              "circle-color": [
+                "match",
+                ["get", "type"],
+                "Accident",
+                "#EF4444",
+                "Road Works",
+                "#F59E0B",
+                "Traffic Jam",
+                "#DC2626",
+                "#3B82F6",
+              ],
+              "circle-stroke-width": 2,
+              "circle-stroke-color": "#FFFFFF",
+            },
+          });
+        }
 
         // Event listeners for popup
         map.on("click", "traffic-incidents-layer", (e) => {
@@ -87,7 +94,7 @@ export function useTrafficIncidents(
         );
         const data = await res.json();
 
-        if (data.incidents) {
+        if (data.incidents && isMapReady()) {
           setIncidents(data.incidents);
 
           const features = data.incidents.map((inc: any) => ({
