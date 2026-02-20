@@ -5,11 +5,29 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const hpp = require("hpp");
 const xss = require("xss");
+const morgan = require("morgan");
 const { createClient } = require("@supabase/supabase-js");
 require("dotenv").config();
 
+// Custom Middlewares & Utilities
+const logger = require("./utils/logger");
+const authMiddleware = require("./middleware/auth");
+const {
+  validateRequest,
+  locationSchema,
+  tripStartSchema,
+  hazardReportSchema,
+} = require("./middleware/validator");
+
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// security: Logging requests
+app.use(
+  morgan("combined", {
+    stream: { write: (message) => logger.info(message.trim()) },
+  }),
+);
 
 // security: Set security HTTP headers
 app.use(helmet());
@@ -110,34 +128,39 @@ try {
 // ---------------------------------------------------------
 // 1️⃣ LOCATION DATA RECEIVER
 // ---------------------------------------------------------
-app.post("/api/location", async (req, res) => {
-  const { userId, latitude, longitude, speed, timestamp } = req.body;
+app.post(
+  "/api/location",
+  authMiddleware,
+  validateRequest(locationSchema),
+  async (req, res) => {
+    const { userId, latitude, longitude, speed, timestamp } = req.body;
 
-  console.log(
-    `📍 GPS: [${latitude.toFixed(4)}, ${longitude.toFixed(4)}] | Speed: ${speed?.toFixed(1) || 0} km/h`,
-  );
+    console.log(
+      `📍 GPS: [${latitude.toFixed(4)}, ${longitude.toFixed(4)}] | Speed: ${speed?.toFixed(1) || 0} km/h`,
+    );
 
-  // Risk Analysis
-  const riskAnalysis = analyzeRisk(speed, "Clear");
+    // Risk Analysis
+    const riskAnalysis = analyzeRisk(speed, "Clear");
 
-  // Optional: Save location to Supabase if active
-  if (!useMockMock && supabase) {
-    // execute async save without awaiting to keep response fast
-    supabase
-      .from("location_history")
-      .insert([{ user_id: userId, latitude, longitude, speed, timestamp }])
-      .then(({ error }) => {
-        if (error) console.error("Loc save error:", error.message);
-      });
-  }
+    // Optional: Save location to Supabase if active
+    if (!useMockMock && supabase) {
+      // execute async save without awaiting to keep response fast
+      supabase
+        .from("location_history")
+        .insert([{ user_id: userId, latitude, longitude, speed, timestamp }])
+        .then(({ error }) => {
+          if (error) console.error("Loc save error:", error.message);
+        });
+    }
 
-  res.json({
-    status: "success",
-    processedAt: new Date(),
-    riskLevel: riskAnalysis.level,
-    message: riskAnalysis.message,
-  });
-});
+    res.json({
+      status: "success",
+      processedAt: new Date(),
+      riskLevel: riskAnalysis.level,
+      message: riskAnalysis.message,
+    });
+  },
+);
 
 // ---------------------------------------------------------
 // 2️⃣ RISK ANALYSIS LOGIC
@@ -192,35 +215,40 @@ app.get("/api/alerts", async (req, res) => {
 // ---------------------------------------------------------
 // 4️⃣ TRIP MANAGEMENT
 // ---------------------------------------------------------
-app.post("/api/trip/start", async (req, res) => {
-  const { userId, startLocation } = req.body;
+app.post(
+  "/api/trip/start",
+  authMiddleware,
+  validateRequest(tripStartSchema),
+  async (req, res) => {
+    const { userId, startLocation } = req.body;
 
-  if (!useMockMock && supabase) {
-    const { data, error } = await supabase
-      .from("trips")
-      .insert([
-        {
-          user_id: userId,
-          start_time: new Date(),
-          status: "active",
-          start_location: startLocation,
-        },
-      ])
-      .select();
+    if (!useMockMock && supabase) {
+      const { data, error } = await supabase
+        .from("trips")
+        .insert([
+          {
+            user_id: userId,
+            start_time: new Date(),
+            status: "active",
+            start_location: startLocation,
+          },
+        ])
+        .select();
 
-    if (error) return res.status(500).json({ error: error.message });
-    res.json({ message: "Trip started", tripId: data[0].id });
-  } else {
-    const trip = {
-      id: Date.now().toString(),
-      startTime: new Date(),
-      status: "active",
-      startLocation,
-    };
-    mockTrips.push(trip);
-    res.json({ message: "Trip started (Mock)", tripId: trip.id });
-  }
-});
+      if (error) return res.status(500).json({ error: error.message });
+      res.json({ message: "Trip started", tripId: data[0].id });
+    } else {
+      const trip = {
+        id: Date.now().toString(),
+        startTime: new Date(),
+        status: "active",
+        startLocation,
+      };
+      mockTrips.push(trip);
+      res.json({ message: "Trip started (Mock)", tripId: trip.id });
+    }
+  },
+);
 
 app.post("/api/trip/end", async (req, res) => {
   const { tripId, endLocation, distance, duration } = req.body;
@@ -250,35 +278,40 @@ app.post("/api/trip/end", async (req, res) => {
   }
 });
 
-app.post("/api/report-hazard", async (req, res) => {
-  const { type, severity, location, userId } = req.body;
+app.post(
+  "/api/report-hazard",
+  authMiddleware,
+  validateRequest(hazardReportSchema),
+  async (req, res) => {
+    const { type, severity, location, userId } = req.body;
 
-  if (!useMockMock && supabase) {
-    const { error } = await supabase.from("hazard_reports").insert([
-      {
+    if (!useMockMock && supabase) {
+      const { error } = await supabase.from("hazard_reports").insert([
+        {
+          type,
+          severity,
+          location,
+          user_id: userId,
+          created_at: new Date(),
+        },
+      ]);
+
+      if (error) return res.status(500).json({ error: error.message });
+      res.json({ message: "Hazard reported successfully" });
+    } else {
+      const report = {
+        id: Date.now().toString(),
         type,
         severity,
         location,
-        user_id: userId,
+        userId,
         created_at: new Date(),
-      },
-    ]);
-
-    if (error) return res.status(500).json({ error: error.message });
-    res.json({ message: "Hazard reported successfully" });
-  } else {
-    const report = {
-      id: Date.now().toString(),
-      type,
-      severity,
-      location,
-      userId,
-      created_at: new Date(),
-    };
-    mockHazards.push(report);
-    res.json({ message: "Hazard reported (Mock)" });
-  }
-});
+      };
+      mockHazards.push(report);
+      res.json({ message: "Hazard reported (Mock)" });
+    }
+  },
+);
 
 // ---------------------------------------------------------
 // 5️⃣ ML ACCIDENT PREDICTION (AI ENGINE)
@@ -312,12 +345,24 @@ app.post("/api/predict-accident", (req, res) => {
   res.json(prediction);
 });
 
+// 6️⃣ GLOBAL ERROR HANDLER
+// ---------------------------------------------------------
+app.use((err, req, res, next) => {
+  logger.error(
+    `${err.status || 500} - ${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`,
+  );
+  res.status(err.status || 500).json({
+    error: "Internal Server Error",
+    message: process.env.NODE_ENV === "development" ? err.message : undefined,
+  });
+});
+
 // Start
 app.listen(PORT, () => {
-  console.log(`🧠 SafeTrip Backend (Brain) running on port ${PORT}`);
+  logger.info(`🧠 SafeTrip Backend (Brain) running on port ${PORT}`);
   if (useMockMock) {
-    console.log(
-      "⚠️  NOTICE: Running in MOCK MODE (No Database). Updates will be lost on restart.",
+    logger.warn(
+      "⚠️ NOTICE: Running in MOCK MODE (No Database). Updates will be lost on restart.",
     );
   }
 });
