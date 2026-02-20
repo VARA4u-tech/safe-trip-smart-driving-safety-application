@@ -473,16 +473,35 @@ const LiveMapScreen = () => {
     [navigate],
   );
 
-  // ─── GPS tracking ─────────────────────────────────────────────────────────
+  // ─── GPS tracking (Throttled for Performance) ─────────────────────────────
+  const lastUpdateRef = useRef<{ time: number; coords: [number, number] }>({
+    time: 0,
+    coords: [0, 0],
+  });
+
   useEffect(() => {
     if (!navigator.geolocation) return;
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
+        const now = Date.now();
         const coords: [number, number] = [
           pos.coords.longitude,
           pos.coords.latitude,
         ];
+
+        // Throttling logic: skip if too frequent and haven't moved much
+        // unless it's the first fix
+        const distMoved =
+          haversine(lastUpdateRef.current.coords, coords) * 1000; // meters
+        const timeElapsed = now - lastUpdateRef.current.time;
+
+        if (gpsActive && timeElapsed < 500 && distMoved < 2) {
+          return; // Skip this update to save CPU/Battery
+        }
+
+        lastUpdateRef.current = { time: now, coords };
+
         const acc = pos.coords.accuracy ?? 20;
         setUserLocation(coords);
         localStorage.setItem("last_known_loc", JSON.stringify(coords));
@@ -493,81 +512,56 @@ const LiveMapScreen = () => {
 
         const map = mapRef.current;
 
-        // Update blue dot + accuracy circle
+        // Update blue dot + accuracy circle (Direct DOM/Map manipulation is faster than state)
         userMarkerRef.current?.setLngLat(coords);
-        if (map?.getSource("accuracy-circle")) {
+        if (map?.getSource("accuracy-circle") && map.isStyleLoaded()) {
           (map.getSource("accuracy-circle") as mapboxgl.GeoJSONSource).setData(
             accuracyCircleGeoJSON(coords, acc),
           );
         }
 
-        // Auto-follow heading
-        if (followModeRef.current && map) {
+        // Auto-follow heading (only if changed significantly)
+        if (followModeRef.current && map && map.isStyleLoaded()) {
           map.easeTo({
             center: coords,
             bearing: pos.coords.heading ?? map.getBearing(),
-            zoom: 16,
-            pitch: 45,
-            duration: 800,
+            duration: 500,
           });
         }
 
-        // Send to backend
         const currentSpeedKmh = (pos.coords.speed || 0) * 3.6;
-        if (tripActiveRef.current) {
-          const headers: Record<string, string> = {
-            "Content-Type": "application/json",
-          };
-          if (session?.access_token) {
-            headers["Authorization"] = `Bearer ${session.access_token}`;
-          }
-          fetch(`${BACKEND_URL}/api/location`, {
-            method: "POST",
-            headers,
-            body: JSON.stringify({
-              userId: user?.id || "anonymous",
-              latitude: coords[1],
-              longitude: coords[0],
-              speed: currentSpeedKmh,
-              timestamp: new Date(),
-            }),
-          })
-            .then((r) => r.json())
-            .then((data) => {
-              if (data.riskLevel === "HIGH")
-                toast.error(data.message, { duration: 3000 });
-              else if (data.riskLevel === "MEDIUM")
-                toast.warning(data.message, { duration: 2000 });
-            })
-            .catch(() => {});
-        }
 
-        // Trail & distance
+        // Trail & distance calculation
         if (tripActiveRef.current) {
           const prev = trailCoordsRef.current;
           if (prev.length > 0) {
-            setTripDistanceKm(
-              (d) => d + haversine(prev[prev.length - 1], coords),
-            );
+            const legDist = haversine(prev[prev.length - 1], coords);
+            if (legDist > 0.002) {
+              // Only record if moved > 2m
+              setTripDistanceKm((d) => d + legDist);
+              trailCoordsRef.current = [...prev, coords];
+
+              if (map?.getSource("gps-trail") && map.isStyleLoaded()) {
+                (map.getSource("gps-trail") as mapboxgl.GeoJSONSource).setData({
+                  type: "Feature",
+                  properties: {},
+                  geometry: {
+                    type: "LineString",
+                    coordinates: trailCoordsRef.current,
+                  },
+                });
+              }
+            }
+          } else {
+            trailCoordsRef.current = [coords];
           }
-          trailCoordsRef.current = [...prev, coords];
+
           speedSamplesRef.current.push(currentSpeedKmh);
           if (currentSpeedKmh > maxSpeedRef.current)
             maxSpeedRef.current = currentSpeedKmh;
-
-          if (map?.getSource("gps-trail")) {
-            (map.getSource("gps-trail") as mapboxgl.GeoJSONSource).setData({
-              type: "Feature",
-              properties: {},
-              geometry: {
-                type: "LineString",
-                coordinates: trailCoordsRef.current,
-              },
-            });
-          }
         }
 
-        // First GPS fix → fly to user + Generate local mock alerts
+        // First GPS fix → fly to user
         if (!gpsActive && map) {
           map.flyTo({
             center: coords,
@@ -576,8 +570,7 @@ const LiveMapScreen = () => {
             essential: true,
           });
 
-          // Generate 4 mock alerts near the user's current location
-          const localAlerts = mockAlerts.map((base, i) => ({
+          const localAlerts = mockAlerts.map((base) => ({
             ...base,
             coords: [
               coords[0] + (Math.random() - 0.5) * 0.015,
@@ -588,7 +581,7 @@ const LiveMapScreen = () => {
         }
       },
       () => setGpsActive(false),
-      { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 },
+      { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 },
     );
 
     return () => {
@@ -596,7 +589,46 @@ const LiveMapScreen = () => {
         navigator.geolocation.clearWatch(watchIdRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [gpsActive]);
+
+  // Separate Effect for Backend Reporting (Throttled to 5 seconds)
+  useEffect(() => {
+    if (!tripActive || !gpsActive) return;
+
+    const reportInterval = setInterval(() => {
+      const coords = lastUpdateRef.current.coords;
+      const currentSpeedKmh = (speed || 0) * 3.6;
+
+      if (!coords[0] || !coords[1]) return;
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
+      fetch(`${BACKEND_URL}/api/location`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          userId: user?.id || "anonymous",
+          latitude: coords[1],
+          longitude: coords[0],
+          speed: currentSpeedKmh,
+          timestamp: new Date(),
+        }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.riskLevel === "HIGH") toast.error(data.message);
+          else if (data.riskLevel === "MEDIUM") toast.warning(data.message);
+        })
+        .catch(() => {});
+    }, 5000);
+
+    return () => clearInterval(reportInterval);
+  }, [tripActive, gpsActive, session, user, speed]);
 
   // ─── Update nav step as user moves ───────────────────────────────────────
   useEffect(() => {
