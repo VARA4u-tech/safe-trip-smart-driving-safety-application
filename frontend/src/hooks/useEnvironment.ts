@@ -36,6 +36,9 @@ const getDistance = (
 };
 
 export function useEnvironment(lat: number, lon: number) {
+  // Round to 4 decimal places (~11m) so tiny GPS float changes don't retrigger
+  const rLat = Math.round(lat * 10000) / 10000;
+  const rLon = Math.round(lon * 10000) / 10000;
   const { session } = useAuth();
   const [data, setData] = useState<EnvironmentData>({
     weather: { temp: 25, condition: "Clear", riskLevel: "LOW" },
@@ -50,13 +53,13 @@ export function useEnvironment(lat: number, lon: number) {
   });
 
   useEffect(() => {
-    if (!lat || !lon) return;
+    if (!rLat || !rLon) return;
 
     const distMoved = getDistance(
       lastFetchRef.current.lat,
       lastFetchRef.current.lon,
-      lat,
-      lon,
+      rLat,
+      rLon,
     );
     const timeElapsed = Date.now() - lastFetchRef.current.time;
 
@@ -71,7 +74,7 @@ export function useEnvironment(lat: number, lon: number) {
 
     const fetchData = async () => {
       try {
-        lastFetchRef.current = { lat, lon, time: Date.now() };
+        lastFetchRef.current = { lat: rLat, lon: rLon, time: Date.now() };
 
         const headers: Record<string, string> = {};
         if (session?.access_token) {
@@ -79,10 +82,10 @@ export function useEnvironment(lat: number, lon: number) {
         }
 
         const [weatherRes, trafficRes] = await Promise.all([
-          fetch(`${BACKEND_URL}/api/weather?lat=${lat}&lon=${lon}`, {
+          fetch(`${BACKEND_URL}/api/weather?lat=${rLat}&lon=${rLon}`, {
             headers,
           }),
-          fetch(`${BACKEND_URL}/api/traffic?lat=${lat}&lon=${lon}`, {
+          fetch(`${BACKEND_URL}/api/traffic?lat=${rLat}&lon=${rLon}`, {
             headers,
           }),
         ]);
@@ -110,7 +113,7 @@ export function useEnvironment(lat: number, lon: number) {
     fetchData();
     // We don't need a setInterval here because the parent passes new coords
     // and this useEffect handles the distance-based throttling.
-  }, [lat, lon, session]);
+  }, [rLat, rLon, session]);
 
   return data;
 }

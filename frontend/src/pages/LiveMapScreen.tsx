@@ -198,6 +198,8 @@ const LiveMapScreen = () => {
   const accuracyRef = useRef(0);
   const followModeRef = useRef(false);
   const styleChangingRef = useRef(false);
+  // Debounce ref for bearing state updates (avoids re-renders on every rotation frame)
+  const bearingRafRef = useRef<number | null>(null);
 
   // UI state
   const [tripActive, setTripActive] = useState(() => {
@@ -258,8 +260,8 @@ const LiveMapScreen = () => {
 
   const { saveTrip } = useTripStore();
 
-  // ─── Traffic Incidents Hook (fetches every 60s) ───
-  useTrafficIncidents(mapRef.current, userLocation);
+  // ─── Traffic Incidents Hook (pass stable ref, not snapshot) ───
+  useTrafficIncidents(mapRef, userLocation);
 
   // ─── Environment Monitor (AI Data Source) ───
   const env = useEnvironment(userLocation[1], userLocation[0]);
@@ -314,8 +316,14 @@ const LiveMapScreen = () => {
       dragRotate: true,
     });
 
-    // ── Listen for bearing change (for compass indicator) ─────────────────
-    map.on("rotate", () => setBearing(map.getBearing()));
+    // ── Listen for bearing change (debounced via rAF to avoid flooding renders) ──
+    map.on("rotate", () => {
+      if (bearingRafRef.current !== null) return; // already queued
+      bearingRafRef.current = requestAnimationFrame(() => {
+        bearingRafRef.current = null;
+        setBearing(map.getBearing());
+      });
+    });
 
     map.on("load", () => {
       setMapLoaded(true);
@@ -533,13 +541,13 @@ const LiveMapScreen = () => {
 
         // Trail & distance calculation
         if (tripActiveRef.current) {
-          const prev = trailCoordsRef.current;
-          if (prev.length > 0) {
-            const legDist = haversine(prev[prev.length - 1], coords);
+          const trail = trailCoordsRef.current;
+          if (trail.length > 0) {
+            const legDist = haversine(trail[trail.length - 1], coords);
             if (legDist > 0.002) {
-              // Only record if moved > 2m
+              // Only record if moved > 2m — mutate in-place (no O(n) spread)
               setTripDistanceKm((d) => d + legDist);
-              trailCoordsRef.current = [...prev, coords];
+              trail.push(coords);
 
               if (map?.getSource("gps-trail") && map.isStyleLoaded()) {
                 (map.getSource("gps-trail") as mapboxgl.GeoJSONSource).setData({
@@ -547,13 +555,13 @@ const LiveMapScreen = () => {
                   properties: {},
                   geometry: {
                     type: "LineString",
-                    coordinates: trailCoordsRef.current,
+                    coordinates: trail,
                   },
                 });
               }
             }
           } else {
-            trailCoordsRef.current = [coords];
+            trail.push(coords);
           }
 
           speedSamplesRef.current.push(currentSpeedKmh);

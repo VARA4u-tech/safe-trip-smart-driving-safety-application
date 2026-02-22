@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, RefObject } from "react";
 import mapboxgl from "mapbox-gl";
 import { BACKEND_URL } from "@/lib/constants";
 import { useAuth } from "./useAuth";
@@ -24,7 +24,7 @@ const getDistance = (
 };
 
 export function useTrafficIncidents(
-  map: mapboxgl.Map | null,
+  mapRef: RefObject<mapboxgl.Map | null>,
   userLocation: [number, number],
 ) {
   const { session } = useAuth();
@@ -36,6 +36,7 @@ export function useTrafficIncidents(
   });
 
   useEffect(() => {
+    const map = mapRef.current;
     if (!map || !userLocation) return;
 
     const isMapReady = () => map && map.getStyle() && map.isStyleLoaded();
@@ -171,7 +172,9 @@ export function useTrafficIncidents(
     };
 
     fetchIncidents();
-  }, [map, userLocation, session]);
+    // mapRef is a stable object reference; we intentionally omit it from deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userLocation[0], userLocation[1], session]);
 
   return incidents;
 }
