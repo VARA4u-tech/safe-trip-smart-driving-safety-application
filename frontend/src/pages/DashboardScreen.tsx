@@ -18,6 +18,7 @@ import {
   Home,
 } from "lucide-react";
 import { toast } from "sonner";
+import AppFooter from "@/components/AppFooter";
 
 const DashboardScreen = () => {
   const { user, signOut } = useAuth();
@@ -244,6 +245,9 @@ const DashboardScreen = () => {
             </button>
           </div>
         </footer>
+
+        {/* Premium Footer */}
+        <AppFooter />
       </div>
     </VintageLayout>
   );

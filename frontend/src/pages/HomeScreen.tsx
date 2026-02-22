@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import AppFooter from "@/components/AppFooter";
 import VintageLayout from "@/components/VintageLayout";
 import VintageFrame from "@/components/VintageFrame";
 import {
@@ -141,13 +142,8 @@ const HomeScreen = () => {
           ))}
         </div>
 
-        {/* Ethical Footer Banner */}
-        <footer className="glass-panel p-6 text-center border-primary/10 rounded-3xl mt-12 bg-primary/5">
-          <p className="text-sm font-medium italic text-primary/80">
-            Smart Driving Safety — Empowering every journey with real-time
-            intelligence.
-          </p>
-        </footer>
+        {/* Premium Footer */}
+        <AppFooter />
       </div>
     </VintageLayout>
   );

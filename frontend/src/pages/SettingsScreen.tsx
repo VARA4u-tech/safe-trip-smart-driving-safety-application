@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import EmergencyContacts from "@/components/EmergencyContacts";
 import DrowsinessDetection from "@/components/DrowsinessDetection";
+import AppFooter from "@/components/AppFooter";
 
 const SettingsScreen = () => {
   const { signOut } = useAuth();
@@ -189,11 +190,8 @@ const SettingsScreen = () => {
           </button>
         </div>
 
-        <footer className="py-6 text-center">
-          <p className="text-[10px] font-black text-primary/40 tracking-[0.5em] uppercase">
-            VARA4u Intelligence Systems
-          </p>
-        </footer>
+        {/* Premium Footer */}
+        <AppFooter />
       </div>
     </VintageLayout>
   );
