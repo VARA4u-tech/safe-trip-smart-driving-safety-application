@@ -1,4 +1,4 @@
-# 🛡️ SafeTrip Pro | Intelligence in Motion
+9# 🛡️ SafeTrip Pro | Intelligence in Motion
 
 ![SafeTrip Pro Banner](https://raw.githubusercontent.com/VARA4u-tech/safe-trip-smart-driving-safety-application/main/frontend/public/logo.svg)
 
@@ -97,14 +97,6 @@ SafeTrip Pro isn't just a utility; it's an experience.
 
 4. **Database Initialization**
    Paste the contents of `backend/db_setup.sql` into your Supabase SQL Editor to initialize the Guardian Network and Trip History tables.
-
----
-
-## 👤 Credits & Systems
-
-**Developer**: [VARA4u Intelligence Systems](https://github.com/VARA4u-tech)  
-**Version**: 2.4.0-LUXE  
-**Status**: Intelligence in Motion
 
 ---
 
