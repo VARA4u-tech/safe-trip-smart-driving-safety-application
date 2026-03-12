@@ -144,6 +144,11 @@ const MapSearchBar = ({
     map.flyTo({ center: r.center, zoom: 15, duration: 1400, essential: true });
 
     if (navigate && onNavigateTo) {
+      // Clear the search marker immediately if we are initiating navigation
+      // This prevents overlap with the navigation destination marker
+      searchMarkerRef.current?.remove();
+      searchMarkerRef.current = null;
+      
       onNavigateTo({ name: r.place_name, coords: r.center });
       // Auto-start trip on selection
       if (onStartTrip && !isTripActive) {

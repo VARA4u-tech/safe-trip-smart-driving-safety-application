@@ -75,9 +75,14 @@ export const useMapboxDirections = ({
 
         // ── Destination marker (use Mapbox built-in for guaranteed visibility) ─
         destMarkerRef.current?.remove();
-        destMarkerRef.current = new mapboxgl.Marker({ color: "#EF4444", scale: 1.2 })
-          .setLngLat(coords[coords.length - 1])
-          .addTo(map);
+        // Delay marker placement slightly to ensure it renders after the fitBounds animation
+        // and doesn't conflict with initial mobile render cycles
+        setTimeout(() => {
+          if (!map) return;
+          destMarkerRef.current = new mapboxgl.Marker({ color: "#EF4444", scale: 1.2 })
+            .setLngLat(coords[coords.length - 1])
+            .addTo(map);
+        }, 100);
       };
 
       // If style is already loaded draw immediately; otherwise wait for it
