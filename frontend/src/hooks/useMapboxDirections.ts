@@ -73,21 +73,9 @@ export const useMapboxDirections = ({
         );
         map.fitBounds(bounds, { padding: 80, duration: 1200 });
 
-        // ── Destination marker ───────────────────────────────────────────────
+        // ── Destination marker (use Mapbox built-in for guaranteed visibility) ─
         destMarkerRef.current?.remove();
-        const el = document.createElement("div");
-        el.className = "dest-marker";
-        el.style.cssText = `
-          width: 30px; height: 30px; border-radius: 50% 50% 50% 0;
-          background: #EF4444; transform: rotate(-45deg);
-          display: flex; align-items: center; justify-content: center;
-          border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        `;
-        const inner = document.createElement("div");
-        inner.style.cssText =
-          "width:10px;height:10px;background:white;border-radius:50%;transform:rotate(45deg);";
-        el.appendChild(inner);
-        destMarkerRef.current = new mapboxgl.Marker({ element: el })
+        destMarkerRef.current = new mapboxgl.Marker({ color: "#EF4444", scale: 1.2 })
           .setLngLat(coords[coords.length - 1])
           .addTo(map);
       };
