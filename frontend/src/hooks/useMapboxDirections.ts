@@ -21,74 +21,77 @@ export const useMapboxDirections = ({
   const destMarkerRef = useRef<mapboxgl.Marker | null>(null);
 
   // Helper to draw route on map
-  const drawRouteOnMap = useCallback((navRoute: NavigationRoute) => {
-    const map = mapRef.current;
-    if (!map || !map.getStyle()) return;
+  const drawRouteOnMap = useCallback(
+    (navRoute: NavigationRoute) => {
+      const map = mapRef.current;
+      if (!map || !map.getStyle() || !map.isStyleLoaded()) return;
 
-    const coords = navRoute.geometry.coordinates as [number, number][];
-    
-    // Add/Update Source
-    if (map.getSource("nav-route")) {
-      (map.getSource("nav-route") as mapboxgl.GeoJSONSource).setData({
-        type: "Feature",
-        properties: {},
-        geometry: navRoute.geometry,
-      });
-    } else {
-      map.addSource("nav-route", {
-        type: "geojson",
-        data: {
+      const coords = navRoute.geometry.coordinates as [number, number][];
+
+      // Add/Update Source
+      if (map.getSource("nav-route")) {
+        (map.getSource("nav-route") as mapboxgl.GeoJSONSource).setData({
           type: "Feature",
           properties: {},
           geometry: navRoute.geometry,
+        });
+      } else {
+        map.addSource("nav-route", {
+          type: "geojson",
+          data: {
+            type: "Feature",
+            properties: {},
+            geometry: navRoute.geometry,
+          },
+        });
+      }
+
+      // Add/Update Layer (remove first to ensure it's always on top)
+      if (map.getLayer("nav-route-line")) {
+        map.removeLayer("nav-route-line");
+      }
+
+      map.addLayer({
+        id: "nav-route-line",
+        type: "line",
+        source: "nav-route",
+        layout: { "line-join": "round", "line-cap": "round" },
+        paint: {
+          "line-color": "#F59E0B", // High-contrast Amber for navigation
+          "line-width": 6,
+          "line-opacity": 0.9,
         },
       });
-    }
 
-    // Add/Update Layer (ensure it's on top)
-    if (map.getLayer("nav-route-line")) {
-      map.removeLayer("nav-route-line");
-    }
-    
-    map.addLayer({
-      id: "nav-route-line",
-      type: "line",
-      source: "nav-route",
-      layout: { "line-join": "round", "line-cap": "round" },
-      paint: {
-        "line-color": "#F59E0B", // High-contrast Amber for navigation
-        "line-width": 6,          // Thicker line
-        "line-opacity": 0.8,
-      },
-    });
+      // Fit bounds
+      const bounds = coords.reduce(
+        (b, c) => b.extend(c),
+        new mapboxgl.LngLatBounds(coords[0], coords[0]),
+      );
+      map.fitBounds(bounds, { padding: 80, duration: 1200 });
 
-    // Fit bounds
-    const bounds = coords.reduce(
-      (b, c) => b.extend(c),
-      new mapboxgl.LngLatBounds(coords[0], coords[0]),
-    );
-    map.fitBounds(bounds, { padding: 80, duration: 1200 });
-
-    // Add/Update Destination Marker
-    destMarkerRef.current?.remove();
-    const el = document.createElement("div");
-    el.className = "dest-marker";
-    el.style.cssText = `
+      // Add/Update Destination Marker
+      destMarkerRef.current?.remove();
+      const el = document.createElement("div");
+      el.className = "dest-marker";
+      el.style.cssText = `
       width: 30px; height: 30px; border-radius: 50% 50% 50% 0;
       background: #EF4444; transform: rotate(-45deg);
       display: flex; align-items: center; justify-content: center;
       border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);
     `;
-    const inner = document.createElement("div");
-    inner.style.cssText =
-      "width:10px;height:10px;background:white;border-radius:50%;transform:rotate(45deg);";
-    el.appendChild(inner);
+      const inner = document.createElement("div");
+      inner.style.cssText =
+        "width:10px;height:10px;background:white;border-radius:50%;transform:rotate(45deg);";
+      el.appendChild(inner);
 
-    const lastCoord = coords[coords.length - 1];
-    destMarkerRef.current = new mapboxgl.Marker({ element: el })
-      .setLngLat(lastCoord)
-      .addTo(map);
-  }, [mapRef]);
+      const lastCoord = coords[coords.length - 1];
+      destMarkerRef.current = new mapboxgl.Marker({ element: el })
+        .setLngLat(lastCoord)
+        .addTo(map);
+    },
+    [mapRef],
+  );
 
   const fetchRoute = useCallback(
     async (
@@ -137,8 +140,9 @@ export const useMapboxDirections = ({
         localStorage.setItem("active_nav_dest", destName);
         localStorage.setItem("active_nav_step", "0");
 
-        // Draw route if map is ready
-        if (isMapReady()) {
+        // Draw route directly — map must be loaded at this point
+        const map = mapRef.current;
+        if (map && map.isStyleLoaded()) {
           drawRouteOnMap(navRoute);
         }
       } catch (e) {
@@ -146,7 +150,7 @@ export const useMapboxDirections = ({
       }
       setLoading(false);
     },
-    [accessToken, isMapReady, drawRouteOnMap],
+    [accessToken, mapRef, drawRouteOnMap],
   );
 
   const clearRoute = useCallback(() => {
@@ -168,56 +172,64 @@ export const useMapboxDirections = ({
   }, [mapRef]);
 
   // Haversine distance calculation (km)
-  const haversine = (a: [number, number], b: [number, number]): number => {
-    const R = 6371;
-    const dLat = ((b[1] - a[1]) * Math.PI) / 180;
-    const dLon = ((b[0] - a[0]) * Math.PI) / 180;
-    const s =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos((a[1] * Math.PI) / 180) *
-        Math.cos((b[1] * Math.PI) / 180) *
-        Math.sin(dLon / 2) ** 2;
-    return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
-  };
+  const haversine = useCallback(
+    (a: [number, number], b: [number, number]): number => {
+      const R = 6371;
+      const dLat = ((b[1] - a[1]) * Math.PI) / 180;
+      const dLon = ((b[0] - a[0]) * Math.PI) / 180;
+      const s =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos((a[1] * Math.PI) / 180) *
+          Math.cos((b[1] * Math.PI) / 180) *
+          Math.sin(dLon / 2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
+    },
+    [],
+  );
 
   // Find the closest point on the route line to the user's location
-  const findClosestPointOnRoute = (userLoc: [number, number]) => {
-    if (!route) return null;
-    const coords = route.geometry.coordinates as [number, number][];
-    let minDistance = Infinity;
-    let closestIndex = 0;
+  const findClosestPointOnRoute = useCallback(
+    (userLoc: [number, number]) => {
+      if (!route) return null;
+      const coords = route.geometry.coordinates as [number, number][];
+      let minDistance = Infinity;
+      let closestIndex = 0;
 
-    for (let i = 0; i < coords.length; i++) {
-      const dist = haversine(userLoc, coords[i]);
-      if (dist < minDistance) {
-        minDistance = dist;
-        closestIndex = i;
+      for (let i = 0; i < coords.length; i++) {
+        const dist = haversine(userLoc, coords[i]);
+        if (dist < minDistance) {
+          minDistance = dist;
+          closestIndex = i;
+        }
       }
-    }
 
-    return { pointIndex: closestIndex, distance: minDistance };
-  };
+      return { pointIndex: closestIndex, distance: minDistance };
+    },
+    [route, haversine],
+  );
 
   // Determine which step the user is on based on route coordinates
-  const getStepIndexFromCoordinate = (pointIndex: number) => {
-    if (!route || pointIndex === undefined) return 0;
+  const getStepIndexFromCoordinate = useCallback(
+    (pointIndex: number) => {
+      if (!route || pointIndex === undefined) return 0;
 
-    // Build coordinate-to-step mapping
-    let coordCount = 0;
-    for (let stepIdx = 0; stepIdx < route.steps.length; stepIdx++) {
-      const step = route.steps[stepIdx];
-      const stepLength = Math.round(
-        (step.distance / route.distance) * route.geometry.coordinates.length,
-      );
-      coordCount += stepLength;
-      if (pointIndex <= coordCount) {
-        return stepIdx;
+      let coordCount = 0;
+      for (let stepIdx = 0; stepIdx < route.steps.length; stepIdx++) {
+        const step = route.steps[stepIdx];
+        const stepLength = Math.round(
+          (step.distance / route.distance) * route.geometry.coordinates.length,
+        );
+        coordCount += stepLength;
+        if (pointIndex <= coordCount) {
+          return stepIdx;
+        }
       }
-    }
-    return route.steps.length - 1;
-  };
+      return route.steps.length - 1;
+    },
+    [route],
+  );
 
-  // Sync route with map: Handles initial load and style changes
+  // Sync route with map: re-draw on style changes and restore from localStorage on mount
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -228,13 +240,7 @@ export const useMapboxDirections = ({
       }
     };
 
-    if (map.isStyleLoaded()) {
-      if (route) drawRouteOnMap(route);
-    } else {
-      map.once("style.load", handleStyleLoad);
-    }
-
-    // Also handle initial route restoration from localStorage here
+    // Restore from localStorage on first mount (only when route state is null)
     if (!route) {
       const savedRouteStr = localStorage.getItem("active_nav_route");
       const savedDest = localStorage.getItem("active_nav_dest");
@@ -244,10 +250,17 @@ export const useMapboxDirections = ({
         setRoute(savedRoute);
         setDestinationName(savedDest);
         if (savedStep) setCurrentStepIndex(parseInt(savedStep, 10));
-        // Note: the next render will trigger the drawRouteOnMap in the block above
+        // Next render will run this effect again with route set, which draws it
+        return;
       }
     }
 
+    // Draw route if style is already loaded
+    if (map.isStyleLoaded() && route) {
+      drawRouteOnMap(route);
+    }
+
+    // Re-draw after any map style swap
     map.on("style.load", handleStyleLoad);
     return () => {
       map.off("style.load", handleStyleLoad);
@@ -272,7 +285,7 @@ export const useMapboxDirections = ({
         return next;
       });
     },
-    [route],
+    [route, findClosestPointOnRoute, getStepIndexFromCoordinate],
   );
 
   return {
