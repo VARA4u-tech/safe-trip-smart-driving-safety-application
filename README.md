@@ -1,6 +1,8 @@
-9# 🛡️ SafeTrip Pro | Intelligence in Motion
+<h1 align="center">🛡️ SafeTrip Pro | Intelligence in Motion</h1>
 
-![SafeTrip Pro Banner](https://raw.githubusercontent.com/VARA4u-tech/safe-trip-smart-driving-safety-application/main/frontend/public/logo.svg)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/VARA4u-tech/safe-trip-smart-driving-safety-application/main/frontend/public/logo.svg" width="200"/>
+</p>
 
 > **Elevate your driving experience with the next generation of smart safety.** SafeTrip Pro is a premium, AI-powered navigation and safety companion designed to protect lives through real-time intelligence and predictive analytics.
 
