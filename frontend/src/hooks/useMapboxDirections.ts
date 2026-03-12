@@ -18,81 +18,126 @@ export const useMapboxDirections = ({
   const [destinationName, setDestinationName] = useState("");
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [loading, setLoading] = useState(false);
-  const destMarkerRef = useRef<mapboxgl.Marker | null>(null);
 
-  // Helper to draw route on map
+  const destMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  // Keep a stable ref to the latest route so map drawing is never stale
+  const routeRef = useRef<NavigationRoute | null>(null);
+
+  // ─── Core drawing function (purely imperative, no React state deps) ──────────
   const drawRouteOnMap = useCallback(
     (navRoute: NavigationRoute) => {
       const map = mapRef.current;
-      if (!map || !map.getStyle() || !map.isStyleLoaded()) return;
+      if (!map) return;
 
-      const coords = navRoute.geometry.coordinates as [number, number][];
+      const doRender = () => {
+        const coords = navRoute.geometry.coordinates as [number, number][];
 
-      // Add/Update Source
-      if (map.getSource("nav-route")) {
-        (map.getSource("nav-route") as mapboxgl.GeoJSONSource).setData({
-          type: "Feature",
-          properties: {},
-          geometry: navRoute.geometry,
-        });
-      } else {
-        map.addSource("nav-route", {
-          type: "geojson",
-          data: {
+        // ── Source ──────────────────────────────────────────────────────────
+        if (map.getSource("nav-route")) {
+          (map.getSource("nav-route") as mapboxgl.GeoJSONSource).setData({
             type: "Feature",
             properties: {},
             geometry: navRoute.geometry,
+          });
+        } else {
+          map.addSource("nav-route", {
+            type: "geojson",
+            data: {
+              type: "Feature",
+              properties: {},
+              geometry: navRoute.geometry,
+            },
+          });
+        }
+
+        // ── Layer (remove then re-add so it's always on top) ────────────────
+        if (map.getLayer("nav-route-line")) {
+          map.removeLayer("nav-route-line");
+        }
+        map.addLayer({
+          id: "nav-route-line",
+          type: "line",
+          source: "nav-route",
+          layout: { "line-join": "round", "line-cap": "round" },
+          paint: {
+            "line-color": "#F59E0B",
+            "line-width": 6,
+            "line-opacity": 0.9,
           },
         });
+
+        // ── Fit bounds ───────────────────────────────────────────────────────
+        const bounds = coords.reduce(
+          (b, c) => b.extend(c),
+          new mapboxgl.LngLatBounds(coords[0], coords[0]),
+        );
+        map.fitBounds(bounds, { padding: 80, duration: 1200 });
+
+        // ── Destination marker ───────────────────────────────────────────────
+        destMarkerRef.current?.remove();
+        const el = document.createElement("div");
+        el.className = "dest-marker";
+        el.style.cssText = `
+          width: 30px; height: 30px; border-radius: 50% 50% 50% 0;
+          background: #EF4444; transform: rotate(-45deg);
+          display: flex; align-items: center; justify-content: center;
+          border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        `;
+        const inner = document.createElement("div");
+        inner.style.cssText =
+          "width:10px;height:10px;background:white;border-radius:50%;transform:rotate(45deg);";
+        el.appendChild(inner);
+        destMarkerRef.current = new mapboxgl.Marker({ element: el })
+          .setLngLat(coords[coords.length - 1])
+          .addTo(map);
+      };
+
+      // If style is already loaded draw immediately; otherwise wait for it
+      if (map.isStyleLoaded()) {
+        doRender();
+      } else {
+        map.once("style.load", doRender);
       }
-
-      // Add/Update Layer (remove first to ensure it's always on top)
-      if (map.getLayer("nav-route-line")) {
-        map.removeLayer("nav-route-line");
-      }
-
-      map.addLayer({
-        id: "nav-route-line",
-        type: "line",
-        source: "nav-route",
-        layout: { "line-join": "round", "line-cap": "round" },
-        paint: {
-          "line-color": "#F59E0B", // High-contrast Amber for navigation
-          "line-width": 6,
-          "line-opacity": 0.9,
-        },
-      });
-
-      // Fit bounds
-      const bounds = coords.reduce(
-        (b, c) => b.extend(c),
-        new mapboxgl.LngLatBounds(coords[0], coords[0]),
-      );
-      map.fitBounds(bounds, { padding: 80, duration: 1200 });
-
-      // Add/Update Destination Marker
-      destMarkerRef.current?.remove();
-      const el = document.createElement("div");
-      el.className = "dest-marker";
-      el.style.cssText = `
-      width: 30px; height: 30px; border-radius: 50% 50% 50% 0;
-      background: #EF4444; transform: rotate(-45deg);
-      display: flex; align-items: center; justify-content: center;
-      border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    `;
-      const inner = document.createElement("div");
-      inner.style.cssText =
-        "width:10px;height:10px;background:white;border-radius:50%;transform:rotate(45deg);";
-      el.appendChild(inner);
-
-      const lastCoord = coords[coords.length - 1];
-      destMarkerRef.current = new mapboxgl.Marker({ element: el })
-        .setLngLat(lastCoord)
-        .addTo(map);
     },
     [mapRef],
   );
 
+  // ─── Re-draw whenever the map style hot-swaps ─────────────────────────────
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const onStyleLoad = () => {
+      if (routeRef.current) {
+        drawRouteOnMap(routeRef.current);
+      }
+    };
+
+    map.on("style.load", onStyleLoad);
+    return () => {
+      map.off("style.load", onStyleLoad);
+    };
+  }, [mapRef, drawRouteOnMap]);
+
+  // ─── Restore route from localStorage on first mount ───────────────────────
+  useEffect(() => {
+    const savedRouteStr = localStorage.getItem("active_nav_route");
+    const savedDest = localStorage.getItem("active_nav_dest");
+    if (!savedRouteStr || !savedDest) return;
+
+    const savedRoute = JSON.parse(savedRouteStr) as NavigationRoute;
+    const savedStep = localStorage.getItem("active_nav_step");
+
+    routeRef.current = savedRoute;
+    setRoute(savedRoute);
+    setDestinationName(savedDest);
+    if (savedStep) setCurrentStepIndex(parseInt(savedStep, 10));
+
+    drawRouteOnMap(savedRoute);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally run only once on mount
+
+  // ─── Fetch directions from Mapbox API ─────────────────────────────────────
   const fetchRoute = useCallback(
     async (
       origin: [number, number],
@@ -101,12 +146,14 @@ export const useMapboxDirections = ({
     ) => {
       setLoading(true);
       try {
-        const coords = `${origin[0]},${origin[1]};${destination[0]},${destination[1]}`;
+        const coordStr = `${origin[0]},${origin[1]};${destination[0]},${destination[1]}`;
         const res = await fetch(
-          `${MAPBOX_DIRECTIONS_URL}/${coords}?access_token=${accessToken}&geometries=geojson&steps=true&overview=full&language=en`,
+          `${MAPBOX_DIRECTIONS_URL}/${coordStr}?access_token=${accessToken}&geometries=geojson&steps=true&overview=full&language=en`,
         );
         const data = await res.json();
+
         if (!data.routes || data.routes.length === 0) {
+          console.warn("No routes returned from Mapbox Directions API");
           setLoading(false);
           return;
         }
@@ -131,29 +178,32 @@ export const useMapboxDirections = ({
           geometry: r.geometry,
         };
 
-        setRoute(navRoute);
-        setDestinationName(destName);
-        setCurrentStepIndex(0);
+        // Update the ref first (synchronous, no batching delay)
+        routeRef.current = navRoute;
 
         // Persist to localStorage
         localStorage.setItem("active_nav_route", JSON.stringify(navRoute));
         localStorage.setItem("active_nav_dest", destName);
         localStorage.setItem("active_nav_step", "0");
 
-        // Draw route directly — map must be loaded at this point
-        const map = mapRef.current;
-        if (map && map.isStyleLoaded()) {
-          drawRouteOnMap(navRoute);
-        }
+        // Draw on map immediately (drawRouteOnMap handles style-load internally)
+        drawRouteOnMap(navRoute);
+
+        // Update React state for UI panels
+        setRoute(navRoute);
+        setDestinationName(destName);
+        setCurrentStepIndex(0);
       } catch (e) {
-        console.error("Directions error:", e);
+        console.error("Directions fetch error:", e);
       }
       setLoading(false);
     },
-    [accessToken, mapRef, drawRouteOnMap],
+    [accessToken, drawRouteOnMap],
   );
 
+  // ─── Clear everything ──────────────────────────────────────────────────────
   const clearRoute = useCallback(() => {
+    routeRef.current = null;
     setRoute(null);
     setDestinationName("");
     setCurrentStepIndex(0);
@@ -164,14 +214,14 @@ export const useMapboxDirections = ({
     localStorage.removeItem("active_nav_dest");
     localStorage.removeItem("active_nav_step");
 
-    if (mapRef.current) {
-      const m = mapRef.current;
-      if (m.getLayer("nav-route-line")) m.removeLayer("nav-route-line");
-      if (m.getSource("nav-route")) m.removeSource("nav-route");
+    const map = mapRef.current;
+    if (map) {
+      if (map.getLayer("nav-route-line")) map.removeLayer("nav-route-line");
+      if (map.getSource("nav-route")) map.removeSource("nav-route");
     }
   }, [mapRef]);
 
-  // Haversine distance calculation (km)
+  // ─── Haversine distance (km) ───────────────────────────────────────────────
   const haversine = useCallback(
     (a: [number, number], b: [number, number]): number => {
       const R = 6371;
@@ -187,11 +237,12 @@ export const useMapboxDirections = ({
     [],
   );
 
-  // Find the closest point on the route line to the user's location
+  // ─── Find closest point on route to user location ─────────────────────────
   const findClosestPointOnRoute = useCallback(
     (userLoc: [number, number]) => {
-      if (!route) return null;
-      const coords = route.geometry.coordinates as [number, number][];
+      const r = routeRef.current;
+      if (!r) return null;
+      const coords = r.geometry.coordinates as [number, number][];
       let minDistance = Infinity;
       let closestIndex = 0;
 
@@ -202,81 +253,40 @@ export const useMapboxDirections = ({
           closestIndex = i;
         }
       }
-
       return { pointIndex: closestIndex, distance: minDistance };
     },
-    [route, haversine],
+    [haversine],
   );
 
-  // Determine which step the user is on based on route coordinates
+  // ─── Map point index → step index ─────────────────────────────────────────
   const getStepIndexFromCoordinate = useCallback(
     (pointIndex: number) => {
-      if (!route || pointIndex === undefined) return 0;
+      const r = routeRef.current;
+      if (!r) return 0;
 
       let coordCount = 0;
-      for (let stepIdx = 0; stepIdx < route.steps.length; stepIdx++) {
-        const step = route.steps[stepIdx];
+      for (let stepIdx = 0; stepIdx < r.steps.length; stepIdx++) {
+        const step = r.steps[stepIdx];
         const stepLength = Math.round(
-          (step.distance / route.distance) * route.geometry.coordinates.length,
+          (step.distance / r.distance) * r.geometry.coordinates.length,
         );
         coordCount += stepLength;
-        if (pointIndex <= coordCount) {
-          return stepIdx;
-        }
+        if (pointIndex <= coordCount) return stepIdx;
       }
-      return route.steps.length - 1;
+      return r.steps.length - 1;
     },
-    [route],
+    [],
   );
 
-  // Sync route with map: re-draw on style changes and restore from localStorage on mount
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-
-    const handleStyleLoad = () => {
-      if (route) {
-        drawRouteOnMap(route);
-      }
-    };
-
-    // Restore from localStorage on first mount (only when route state is null)
-    if (!route) {
-      const savedRouteStr = localStorage.getItem("active_nav_route");
-      const savedDest = localStorage.getItem("active_nav_dest");
-      if (savedRouteStr && savedDest) {
-        const savedRoute = JSON.parse(savedRouteStr) as NavigationRoute;
-        const savedStep = localStorage.getItem("active_nav_step");
-        setRoute(savedRoute);
-        setDestinationName(savedDest);
-        if (savedStep) setCurrentStepIndex(parseInt(savedStep, 10));
-        // Next render will run this effect again with route set, which draws it
-        return;
-      }
-    }
-
-    // Draw route if style is already loaded
-    if (map.isStyleLoaded() && route) {
-      drawRouteOnMap(route);
-    }
-
-    // Re-draw after any map style swap
-    map.on("style.load", handleStyleLoad);
-    return () => {
-      map.off("style.load", handleStyleLoad);
-    };
-  }, [mapRef, route, drawRouteOnMap]);
-
-  // Update step index based on user's GPS location relative to the route
+  // ─── Update step index based on user GPS position ─────────────────────────
   const updateStepFromLocation = useCallback(
     (userLoc: [number, number]) => {
-      if (!route) return;
+      if (!routeRef.current) return;
 
       const closest = findClosestPointOnRoute(userLoc);
-      if (!closest || closest.distance > 0.1) return; // Only update if within 100m
+      if (!closest || closest.distance > 0.1) return;
 
       const newStepIndex = getStepIndexFromCoordinate(closest.pointIndex);
-
       setCurrentStepIndex((prev) => {
         const next = Math.max(prev, newStepIndex);
         if (next !== prev) {
@@ -285,7 +295,7 @@ export const useMapboxDirections = ({
         return next;
       });
     },
-    [route, findClosestPointOnRoute, getStepIndexFromCoordinate],
+    [findClosestPointOnRoute, getStepIndexFromCoordinate],
   );
 
   return {
