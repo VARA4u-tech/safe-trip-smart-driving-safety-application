@@ -20,10 +20,74 @@ export const useMapboxDirections = ({
   const [loading, setLoading] = useState(false);
   const destMarkerRef = useRef<mapboxgl.Marker | null>(null);
 
-  // Safety check helper
-  const isMapReady = useCallback(() => {
+  // Helper to draw route on map
+  const drawRouteOnMap = useCallback((navRoute: NavigationRoute) => {
     const map = mapRef.current;
-    return map && map.getStyle() && map.isStyleLoaded();
+    if (!map || !map.getStyle()) return;
+
+    const coords = navRoute.geometry.coordinates as [number, number][];
+    
+    // Add/Update Source
+    if (map.getSource("nav-route")) {
+      (map.getSource("nav-route") as mapboxgl.GeoJSONSource).setData({
+        type: "Feature",
+        properties: {},
+        geometry: navRoute.geometry,
+      });
+    } else {
+      map.addSource("nav-route", {
+        type: "geojson",
+        data: {
+          type: "Feature",
+          properties: {},
+          geometry: navRoute.geometry,
+        },
+      });
+    }
+
+    // Add/Update Layer (ensure it's on top)
+    if (map.getLayer("nav-route-line")) {
+      map.removeLayer("nav-route-line");
+    }
+    
+    map.addLayer({
+      id: "nav-route-line",
+      type: "line",
+      source: "nav-route",
+      layout: { "line-join": "round", "line-cap": "round" },
+      paint: {
+        "line-color": "#F59E0B", // High-contrast Amber for navigation
+        "line-width": 6,          // Thicker line
+        "line-opacity": 0.8,
+      },
+    });
+
+    // Fit bounds
+    const bounds = coords.reduce(
+      (b, c) => b.extend(c),
+      new mapboxgl.LngLatBounds(coords[0], coords[0]),
+    );
+    map.fitBounds(bounds, { padding: 80, duration: 1200 });
+
+    // Add/Update Destination Marker
+    destMarkerRef.current?.remove();
+    const el = document.createElement("div");
+    el.className = "dest-marker";
+    el.style.cssText = `
+      width: 30px; height: 30px; border-radius: 50% 50% 50% 0;
+      background: #EF4444; transform: rotate(-45deg);
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    `;
+    const inner = document.createElement("div");
+    inner.style.cssText =
+      "width:10px;height:10px;background:white;border-radius:50%;transform:rotate(45deg);";
+    el.appendChild(inner);
+
+    const lastCoord = coords[coords.length - 1];
+    destMarkerRef.current = new mapboxgl.Marker({ element: el })
+      .setLngLat(lastCoord)
+      .addTo(map);
   }, [mapRef]);
 
   const fetchRoute = useCallback(
@@ -73,72 +137,16 @@ export const useMapboxDirections = ({
         localStorage.setItem("active_nav_dest", destName);
         localStorage.setItem("active_nav_step", "0");
 
-        // Draw route on map
-        const map = mapRef.current;
+        // Draw route if map is ready
         if (isMapReady()) {
-          const m = map!;
-          if (m.getSource("nav-route")) {
-            (m.getSource("nav-route") as mapboxgl.GeoJSONSource).setData({
-              type: "Feature",
-              properties: {},
-              geometry: r.geometry,
-            });
-          } else {
-            m.addSource("nav-route", {
-              type: "geojson",
-              data: {
-                type: "Feature",
-                properties: {},
-                geometry: r.geometry,
-              },
-            });
-            m.addLayer({
-              id: "nav-route-line",
-              type: "line",
-              source: "nav-route",
-              layout: { "line-join": "round", "line-cap": "round" },
-              paint: {
-                "line-color": "#6B4E2E",
-                "line-width": 4,
-                "line-opacity": 0.8,
-              },
-            });
-          }
-
-          // Fit bounds
-          const coords = r.geometry.coordinates as [number, number][];
-          const bounds = coords.reduce(
-            (b, c) => b.extend(c),
-            new mapboxgl.LngLatBounds(coords[0], coords[0]),
-          );
-          m.fitBounds(bounds, { padding: 80, duration: 1200 });
-
-          // Add Destination Marker
-          destMarkerRef.current?.remove();
-          const el = document.createElement("div");
-          el.className = "dest-marker";
-          el.style.cssText = `
-            width: 30px; height: 30px; border-radius: 50% 50% 50% 0;
-            background: #EF4444; transform: rotate(-45deg);
-            display: flex; align-items: center; justify-content: center;
-            border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-          `;
-          const inner = document.createElement("div");
-          inner.style.cssText =
-            "width:10px;height:10px;background:white;border-radius:50%;transform:rotate(45deg);";
-          el.appendChild(inner);
-
-          const lastCoord = coords[coords.length - 1];
-          destMarkerRef.current = new mapboxgl.Marker({ element: el })
-            .setLngLat(lastCoord)
-            .addTo(m);
+          drawRouteOnMap(navRoute);
         }
       } catch (e) {
         console.error("Directions error:", e);
       }
       setLoading(false);
     },
-    [accessToken, mapRef, isMapReady],
+    [accessToken, isMapReady, drawRouteOnMap],
   );
 
   const clearRoute = useCallback(() => {
@@ -152,12 +160,12 @@ export const useMapboxDirections = ({
     localStorage.removeItem("active_nav_dest");
     localStorage.removeItem("active_nav_step");
 
-    if (isMapReady()) {
-      const m = mapRef.current!;
+    if (mapRef.current) {
+      const m = mapRef.current;
       if (m.getLayer("nav-route-line")) m.removeLayer("nav-route-line");
       if (m.getSource("nav-route")) m.removeSource("nav-route");
     }
-  }, [mapRef, isMapReady]);
+  }, [mapRef]);
 
   // Haversine distance calculation (km)
   const haversine = (a: [number, number], b: [number, number]): number => {
@@ -209,81 +217,42 @@ export const useMapboxDirections = ({
     return route.steps.length - 1;
   };
 
-  // Restore route from localStorage on mount
+  // Sync route with map: Handles initial load and style changes
   useEffect(() => {
-    const savedRoute = localStorage.getItem("active_nav_route");
-    const savedDest = localStorage.getItem("active_nav_dest");
+    const map = mapRef.current;
+    if (!map) return;
 
-    if (savedRoute && savedDest) {
-      const parsedRoute = JSON.parse(savedRoute) as NavigationRoute;
-      const savedStep = localStorage.getItem("active_nav_step");
+    const handleStyleLoad = () => {
+      if (route) {
+        drawRouteOnMap(route);
+      }
+    };
 
-      setRoute(parsedRoute);
-      setDestinationName(savedDest);
-      if (savedStep) setCurrentStepIndex(parseInt(savedStep, 10));
+    if (map.isStyleLoaded()) {
+      if (route) drawRouteOnMap(route);
+    } else {
+      map.once("style.load", handleStyleLoad);
+    }
 
-      const map = mapRef.current;
-      const drawSavedRoute = () => {
-        if (!map || !map.getStyle()) return;
-        if (!map.getSource("nav-route")) {
-          map.addSource("nav-route", {
-            type: "geojson",
-            data: {
-              type: "Feature",
-              properties: {},
-              geometry: parsedRoute.geometry,
-            },
-          });
-          map.addLayer({
-            id: "nav-route-line",
-            type: "line",
-            source: "nav-route",
-            layout: { "line-join": "round", "line-cap": "round" },
-            paint: {
-              "line-color": "#6B4E2E",
-              "line-width": 4,
-              "line-opacity": 0.8,
-            },
-          });
-
-          // Restore bounds
-          const coords = parsedRoute.geometry.coordinates as [number, number][];
-          const bounds = coords.reduce(
-            (b, c) => b.extend(c),
-            new mapboxgl.LngLatBounds(coords[0], coords[0]),
-          );
-          map.fitBounds(bounds, { padding: 80, duration: 1000 });
-
-          // Restore Marker
-          const el = document.createElement("div");
-          el.className = "dest-marker";
-          el.style.cssText = `
-            width: 30px; height: 30px; border-radius: 50% 50% 50% 0;
-            background: #EF4444; transform: rotate(-45deg);
-            display: flex; align-items: center; justify-content: center;
-            border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-          `;
-          const inner = document.createElement("div");
-          inner.style.cssText =
-            "width:10px;height:10px;background:white;border-radius:50%;transform:rotate(45deg);";
-          el.appendChild(inner);
-
-          const lastCoord = coords[coords.length - 1];
-          destMarkerRef.current = new mapboxgl.Marker({ element: el })
-            .setLngLat(lastCoord)
-            .addTo(map);
-        }
-      };
-
-      if (map) {
-        if (map.isStyleLoaded()) {
-          drawSavedRoute();
-        } else {
-          map.once("style.load", drawSavedRoute);
-        }
+    // Also handle initial route restoration from localStorage here
+    if (!route) {
+      const savedRouteStr = localStorage.getItem("active_nav_route");
+      const savedDest = localStorage.getItem("active_nav_dest");
+      if (savedRouteStr && savedDest) {
+        const savedRoute = JSON.parse(savedRouteStr) as NavigationRoute;
+        const savedStep = localStorage.getItem("active_nav_step");
+        setRoute(savedRoute);
+        setDestinationName(savedDest);
+        if (savedStep) setCurrentStepIndex(parseInt(savedStep, 10));
+        // Note: the next render will trigger the drawRouteOnMap in the block above
       }
     }
-  }, [mapRef]);
+
+    map.on("style.load", handleStyleLoad);
+    return () => {
+      map.off("style.load", handleStyleLoad);
+    };
+  }, [mapRef, route, drawRouteOnMap]);
 
   // Update step index based on user's GPS location relative to the route
   const updateStepFromLocation = useCallback(
