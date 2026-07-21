@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback, memo } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/lib/supabase";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import VintageLayout from "@/components/VintageLayout";
@@ -483,9 +484,10 @@ const LiveMapScreen = () => {
   );
 
   // ─── GPS tracking (Throttled for Performance) ─────────────────────────────
-  const lastUpdateRef = useRef<{ time: number; coords: [number, number] }>({
+  const lastUpdateRef = useRef<{ time: number; coords: [number, number]; speed: number }>({
     time: 0,
     coords: [0, 0],
+    speed: 0,
   });
 
   useEffect(() => {
@@ -509,7 +511,7 @@ const LiveMapScreen = () => {
           return; // Skip this update to save CPU/Battery
         }
 
-        lastUpdateRef.current = { time: now, coords };
+        lastUpdateRef.current = { time: now, coords, speed: pos.coords.speed || 0 };
 
         const acc = pos.coords.accuracy ?? 20;
         setUserLocation(coords);
@@ -595,26 +597,27 @@ const LiveMapScreen = () => {
 
   // Separate Effect for Backend Reporting (Throttled to 5 seconds)
   useEffect(() => {
-    if (!tripActive || !gpsActive || !session?.access_token) return; // Wait for session token
+    if (!tripActive || !gpsActive) return;
 
-    const reportInterval = setInterval(() => {
+    const reportInterval = setInterval(async () => {
       const coords = lastUpdateRef.current.coords;
-      const currentSpeedKmh = (speed || 0) * 3.6;
+      const currentSpeedKmh = lastUpdateRef.current.speed * 3.6;
 
       if (!coords[0] || !coords[1]) return;
 
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      if (!currentSession?.access_token) return;
+
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${currentSession.access_token}`
       };
-      if (session?.access_token) {
-        headers["Authorization"] = `Bearer ${session.access_token}`;
-      }
 
       fetch(`${BACKEND_URL}/api/location`, {
         method: "POST",
         headers,
         body: JSON.stringify({
-          userId: user?.id || "anonymous",
+          userId: currentSession.user?.id || "anonymous",
           latitude: coords[1],
           longitude: coords[0],
           speed: currentSpeedKmh,
@@ -630,7 +633,7 @@ const LiveMapScreen = () => {
     }, 5000);
 
     return () => clearInterval(reportInterval);
-  }, [tripActive, gpsActive, session, user, speed]);
+  }, [tripActive, gpsActive]);
 
   // ─── Update nav step as user moves ───────────────────────────────────────
   useEffect(() => {
