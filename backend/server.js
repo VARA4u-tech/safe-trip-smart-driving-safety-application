@@ -94,9 +94,10 @@ const weatherRoutes = require("./routes/weather");
 const trafficRoutes = require("./routes/traffic");
 const newsRoutes = require("./routes/news");
 
-app.use("/api/weather", authMiddleware, weatherRoutes);
-app.use("/api/traffic", authMiddleware, trafficRoutes);
-app.use("/api/news", authMiddleware, newsRoutes);
+// ✅ Public routes — no auth needed (weather/traffic/news are not user-specific data)
+app.use("/api/weather", weatherRoutes);
+app.use("/api/traffic", trafficRoutes);
+app.use("/api/news", newsRoutes);
 
 // 🧠 Database Initialization (Hybrid Mode)
 let supabase = null;
@@ -302,7 +303,8 @@ app.post(
 // ---------------------------------------------------------
 const { predictRisk } = require("./ml/accident_predictor");
 
-app.post("/api/predict-accident", authMiddleware, async (req, res) => {
+// ✅ Public route — ML prediction uses user's current sensor data only, no user account needed
+app.post("/api/predict-accident", async (req, res) => {
   const {
     speedKmh,
     weatherCondition,
