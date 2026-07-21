@@ -578,14 +578,7 @@ const LiveMapScreen = () => {
             essential: true,
           });
 
-          const localAlerts = mockAlerts.map((base) => ({
-            ...base,
-            coords: [
-              coords[0] + (Math.random() - 0.5) * 0.015,
-              coords[1] + (Math.random() - 0.5) * 0.015,
-            ] as [number, number],
-          }));
-          setActiveAlerts(localAlerts);
+          setActiveAlerts([]);
         }
       },
       () => setGpsActive(false),
@@ -791,7 +784,7 @@ const LiveMapScreen = () => {
       durationSec: tripDurationSec,
       maxSpeedKmh: maxSpeedRef.current,
       avgSpeedKmh: avg,
-      alertCount: mockAlerts.length,
+      alertCount: backendAlerts.length,
       trailCoords: [...trailCoordsRef.current],
       startTime,
       speedSamples: [...samples],
@@ -1173,7 +1166,7 @@ const LiveMapScreen = () => {
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-yellow-500 animate-pulse" />
               <span className="font-bold text-sm tracking-tight">
-                ALERTS ({mockAlerts.length + backendAlerts.length})
+                ALERTS ({backendAlerts.length})
               </span>
             </div>
             <div className="w-7 h-7 rounded-full bg-primary/5 flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
@@ -1186,8 +1179,13 @@ const LiveMapScreen = () => {
           </button>
 
           <div className="px-4 pb-6 space-y-2 overflow-y-auto max-h-56 sm:px-6">
-            {mockAlerts.map((alert) => {
-              const Icon = alertIcons[alert.type];
+            {backendAlerts.length === 0 ? (
+               <div className="text-center py-4 text-xs font-medium text-muted-foreground">
+                 No active alerts in your area
+               </div>
+            ) : backendAlerts.map((alert) => {
+              const Icon = alertIcons[alert.type as Alert["type"]] || AlertTriangle;
+              const dateStr = alert.created_at ? new Date(alert.created_at).toLocaleTimeString() : 'Just now';
               return (
                 <button
                   key={alert.id}
@@ -1199,10 +1197,10 @@ const LiveMapScreen = () => {
                   </div>
                   <div className="min-w-0">
                     <div className="font-bold text-xs text-foreground truncate">
-                      {alert.title}
+                      {alert.message || alert.type || "Safety Alert"}
                     </div>
                     <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                      {alert.type} · {alert.timeDetected}
+                      {alert.type} · {dateStr}
                     </div>
                   </div>
                 </button>

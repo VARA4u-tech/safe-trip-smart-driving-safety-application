@@ -192,24 +192,7 @@ app.get("/api/alerts", async (req, res) => {
     dbHazards = mockHazards;
   }
 
-  const mockExternalAlerts = [
-    {
-      id: "ext_1",
-      type: "Weather",
-      message: "Fog reported in 5km",
-      severity: "medium",
-      created_at: new Date(),
-    },
-    {
-      id: "ext_2",
-      type: "Traffic",
-      message: "Congestion on Main St",
-      severity: "low",
-      created_at: new Date(),
-    },
-  ];
-
-  res.json([...mockExternalAlerts, ...dbHazards]);
+  res.json(dbHazards);
 });
 
 // ---------------------------------------------------------
