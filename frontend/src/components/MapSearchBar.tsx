@@ -51,7 +51,12 @@ const MapSearchBar = ({
       try {
         let url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?access_token=${accessToken}&limit=5&types=address,poi,place`;
         if (userLocation) {
-          url += `&proximity=${userLocation[0]},${userLocation[1]}`;
+          const lng = userLocation[0];
+          const lat = userLocation[1];
+          // Proximity biases results
+          url += `&proximity=${lng},${lat}`;
+          // Bbox strictly limits results to roughly ~20km radius (0.18 degrees)
+          url += `&bbox=${lng - 0.18},${lat - 0.18},${lng + 0.18},${lat + 0.18}`;
         }
         const res = await fetch(url);
         const data = await res.json();
