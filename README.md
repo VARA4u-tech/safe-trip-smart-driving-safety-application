@@ -82,9 +82,6 @@ SafeTrip Pro isn't just a utility; it's an experience.
    ```bash
    cd frontend
    npm install
-   # Create a .env file with:
-   # VITE_SUPABASE_URL=your_url
-   # VITE_SUPABASE_ANON_KEY=your_key
    npm run dev
    ```
 
@@ -93,7 +90,6 @@ SafeTrip Pro isn't just a utility; it's an experience.
    ```bash
    cd ../backend
    npm install
-   # Create a .env file with your credentials
    npm run dev
    ```
 
