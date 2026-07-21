@@ -50,7 +50,23 @@ export const useMapboxDirections = ({
           });
         }
 
-        // ── Layer (remove then re-add so it's always on top) ────────────────
+        // ── Casing Layer (Outline) ──────────────────────────────────────────
+        if (map.getLayer("nav-route-casing")) {
+          map.removeLayer("nav-route-casing");
+        }
+        map.addLayer({
+          id: "nav-route-casing",
+          type: "line",
+          source: "nav-route",
+          layout: { "line-join": "round", "line-cap": "round" },
+          paint: {
+            "line-color": "#1A73E8",
+            "line-width": 10,
+            "line-opacity": 1,
+          },
+        });
+
+        // ── Main line layer ──────────────────────────────────────────────────
         if (map.getLayer("nav-route-line")) {
           map.removeLayer("nav-route-line");
         }
@@ -60,9 +76,9 @@ export const useMapboxDirections = ({
           source: "nav-route",
           layout: { "line-join": "round", "line-cap": "round" },
           paint: {
-            "line-color": "#F59E0B",
+            "line-color": "#4285F4",
             "line-width": 6,
-            "line-opacity": 0.9,
+            "line-opacity": 1,
           },
         });
 
@@ -209,6 +225,7 @@ export const useMapboxDirections = ({
 
     const map = mapRef.current;
     if (map) {
+      if (map.getLayer("nav-route-casing")) map.removeLayer("nav-route-casing");
       if (map.getLayer("nav-route-line")) map.removeLayer("nav-route-line");
       if (map.getSource("nav-route")) map.removeSource("nav-route");
     }
