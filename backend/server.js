@@ -318,7 +318,7 @@ app.post(
 // ---------------------------------------------------------
 const { predictRisk } = require("./ml/accident_predictor");
 
-app.post("/api/predict-accident", authMiddleware, (req, res) => {
+app.post("/api/predict-accident", authMiddleware, async (req, res) => {
   const {
     speedKmh,
     weatherCondition,
@@ -336,7 +336,7 @@ app.post("/api/predict-accident", authMiddleware, (req, res) => {
     incidentHistoryCount: parseInt(incidentHistoryCount) || 0,
   };
 
-  const prediction = predictRisk(input);
+  const prediction = await predictRisk(input);
 
   console.log(
     `🤖 AI Prediction: Risk=${prediction.probability}% | Status=${prediction.level} | Factor=${prediction.contributingFactors[0]}`,
