@@ -19,13 +19,8 @@ const SplashScreen = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
-  // If user is already logged in, redirect them to dashboard immediately
-  useEffect(() => {
-    if (loading) return;
-    if (user) {
-      navigate("/dashboard");
-    }
-  }, [navigate, user, loading]);
+  // We removed the auto-redirect so users can admire the landing page even when logged in.
+  // The CTA buttons will intelligently route to /dashboard if they are authenticated.
 
   // While checking auth, show nothing or a tiny loader to prevent flash
   if (loading) return null;
@@ -57,12 +52,12 @@ const SplashScreen = () => {
 
             <div className="pt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <button
-                onClick={() => navigate("/login")}
+                onClick={() => navigate(user ? "/dashboard" : "/login")}
                 className="group relative inline-flex items-center justify-center px-8 py-4 font-bold text-white bg-primary rounded-full overflow-hidden shadow-xl shadow-primary/30 transition-transform hover:scale-105 active:scale-95"
               >
                 <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-500 -translate-x-full skew-x-12" />
                 <span className="relative flex items-center gap-2">
-                  Start Your Safe Trip <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  {user ? "Go to Dashboard" : "Start Your Safe Trip"} <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </span>
               </button>
             </div>
@@ -216,10 +211,10 @@ const SplashScreen = () => {
               Join thousands of drivers making the roads safer every day.
             </p>
             <button
-              onClick={() => navigate("/login")}
+              onClick={() => navigate(user ? "/dashboard" : "/login")}
               className="inline-flex items-center gap-2 px-8 py-4 font-bold text-primary-foreground bg-[#1B2B38] rounded-full hover:bg-black transition-colors shadow-xl"
             >
-              <CheckCircle2 className="w-5 h-5" /> Get Started Free
+              <CheckCircle2 className="w-5 h-5" /> {user ? "Go to Dashboard" : "Get Started Free"}
             </button>
             <p className="text-sm text-muted-foreground pt-12">
               © {new Date().getFullYear()} SafeTrip Pro. Built with 🏎️💨 by VARA.
