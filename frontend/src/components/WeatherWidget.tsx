@@ -26,6 +26,7 @@ const WeatherWidget = () => {
   // Poll weather every 5 minutes
   useEffect(() => {
     const fetchWeather = async () => {
+      if (!session?.access_token) return; // Wait for session token
       try {
         const headers: Record<string, string> = {};
         if (session?.access_token) {

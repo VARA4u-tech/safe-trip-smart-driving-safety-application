@@ -41,6 +41,7 @@ const MLSafetyWidget = ({
   }, [currentSpeedKmh, weatherCondition, trafficLevel, session]);
 
   const fetchPrediction = async () => {
+    if (!session?.access_token) return; // Wait for session token
     try {
       setLoading(true);
       const headers: Record<string, string> = {

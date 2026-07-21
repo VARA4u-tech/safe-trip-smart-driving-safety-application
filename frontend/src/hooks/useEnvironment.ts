@@ -54,6 +54,7 @@ export function useEnvironment(lat: number, lon: number) {
 
   useEffect(() => {
     if (!rLat || !rLon) return;
+    if (!session?.access_token) return; // Wait until session is loaded
 
     const distMoved = getDistance(
       lastFetchRef.current.lat,

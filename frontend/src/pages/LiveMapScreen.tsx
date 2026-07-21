@@ -283,6 +283,7 @@ const LiveMapScreen = () => {
 
   // ─── Fetch initial alerts from backend ───────────────────────────────────
   useEffect(() => {
+    if (!session?.access_token) return; // Wait for session token
     const headers: Record<string, string> = {};
     if (session?.access_token) {
       headers["Authorization"] = `Bearer ${session.access_token}`;
@@ -594,7 +595,7 @@ const LiveMapScreen = () => {
 
   // Separate Effect for Backend Reporting (Throttled to 5 seconds)
   useEffect(() => {
-    if (!tripActive || !gpsActive) return;
+    if (!tripActive || !gpsActive || !session?.access_token) return; // Wait for session token
 
     const reportInterval = setInterval(() => {
       const coords = lastUpdateRef.current.coords;

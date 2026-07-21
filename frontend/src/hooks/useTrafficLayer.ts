@@ -122,6 +122,8 @@ export function useTrafficIncidents(
       return;
     }
 
+    if (!session?.access_token) return; // Wait until session is loaded
+
     const fetchIncidents = async () => {
       try {
         lastFetchRef.current = {
