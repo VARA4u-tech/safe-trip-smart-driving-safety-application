@@ -148,7 +148,7 @@ const NavigationDirections = ({
 
   return (
     <div
-      className="absolute top-14 lg:top-24 left-2 right-2 sm:left-4 sm:right-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-md z-30 flex flex-col gap-2 hide-on-short-screen"
+      className="absolute top-16 sm:top-20 lg:top-24 left-2 right-2 sm:left-4 sm:right-4 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-md z-30 flex flex-col gap-2"
       role="navigation"
       aria-label="Turn-by-turn directions"
     >

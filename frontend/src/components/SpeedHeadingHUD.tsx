@@ -42,7 +42,7 @@ const SpeedHeadingHUD = ({
 
   return (
     <div
-      className={`absolute left-3 z-20 flex flex-col gap-2 group hide-on-short-screen ${isCompact ? "bottom-28" : "bottom-40 sm:left-4 gap-3"}`}
+      className={`absolute left-3 z-20 flex flex-col gap-2 group hide-on-short-screen ${isCompact ? "bottom-36" : "bottom-40 sm:left-4 gap-3"}`}
     >
       {/* Prime Instrument: Speed */}
       <div

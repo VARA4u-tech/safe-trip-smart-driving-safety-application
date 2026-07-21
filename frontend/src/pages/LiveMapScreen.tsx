@@ -931,12 +931,14 @@ const LiveMapScreen = () => {
                 {/* Live Weather Widget */}
                 {!isCompact && <WeatherWidget />}
 
-                {/* AI Safety Widget */}
-                <MLSafetyWidget
-                  currentSpeedKmh={speedKmh}
-                  weatherCondition={env.weather.condition}
-                  trafficLevel={env.traffic.congestionLabel.toLowerCase()}
-                />
+                {/* AI Safety Widget - hide on mobile during navigation (saves space) */}
+                {(!isCompact || !navRoute) && (
+                  <MLSafetyWidget
+                    currentSpeedKmh={speedKmh}
+                    weatherCondition={env.weather.condition}
+                    trafficLevel={env.traffic.congestionLabel.toLowerCase()}
+                  />
+                )}
 
                 <VoiceCommandButton onCommand={handleVoiceCommand} />
               </div>
@@ -1101,9 +1103,9 @@ const LiveMapScreen = () => {
               </button>
             </div>
 
-            {/* ── Report Hazard button ────────────────────────────────────────── */}
+            {/* ── Report Hazard button - hidden on mobile during navigation ─── */}
             <div
-              className="absolute left-2 sm:left-4 z-30 hide-on-short-screen"
+              className={`absolute left-2 sm:left-4 z-30 ${isCompact && navRoute ? "hidden" : "hide-on-short-screen"}`}
               style={{
                 bottom: "calc(6.5rem + env(safe-area-inset-bottom, 0px))",
               }}
