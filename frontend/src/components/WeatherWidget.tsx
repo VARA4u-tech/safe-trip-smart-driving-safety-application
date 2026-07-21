@@ -53,7 +53,8 @@ const WeatherWidget = () => {
     };
 
     fetchWeather();
-    const interval = setInterval(fetchWeather, 300000);
+    // Only refresh every 30 minutes — weather doesn't change that fast
+    const interval = setInterval(fetchWeather, 30 * 60 * 1000);
     return () => clearInterval(interval);
   }, [session]);
 

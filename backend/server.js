@@ -60,15 +60,34 @@ app.use(
   }),
 );
 
-// security: Rate Limiting (Global)
-const limiter = rateLimit({
+// security: Tiered Rate Limiting
+// Public read-only APIs (weather, traffic, ML) — generous limits
+const publicLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: "Too many requests from this IP, please try again after 15 minutes",
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  max: 500, // 500 requests per IP per 15 min (~33/min, plenty for polling)
+  message: { error: "Too many requests, please try again later.", retryAfter: 900 },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.method === "OPTIONS", // Never rate-limit preflight
 });
-app.use("/api/", limiter);
+
+// Write/sensitive APIs (location, trip, hazard report) — stricter
+const writeLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute window
+  max: 120, // 2 writes/sec max (GPS pings every 5s = 12/min, so 120 is very safe)
+  message: { error: "Too many write requests, please slow down.", retryAfter: 60 },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use("/api/weather", publicLimiter);
+app.use("/api/traffic", publicLimiter);
+app.use("/api/news", publicLimiter);
+app.use("/api/predict-accident", publicLimiter);
+app.use("/api/alerts", publicLimiter);
+app.use("/api/location", writeLimiter);
+app.use("/api/report-hazard", writeLimiter);
+app.use("/api/trip", writeLimiter);
 
 // security: Body Parser with limits
 app.use(express.json({ limit: "10kb" })); // Prevents large payload attacks

@@ -64,11 +64,11 @@ export function useEnvironment(lat: number, lon: number) {
     );
     const timeElapsed = Date.now() - lastFetchRef.current.time;
 
-    // Only fetch if moved > 200m OR 5 minutes passed
+    // Only fetch if moved > 500m OR 10 minutes have passed
     if (
       lastFetchRef.current.time !== 0 &&
-      distMoved < 0.2 &&
-      timeElapsed < 300000
+      distMoved < 0.5 &&
+      timeElapsed < 600000 // 10 minutes
     ) {
       return;
     }
