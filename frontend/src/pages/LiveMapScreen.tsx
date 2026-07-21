@@ -951,6 +951,7 @@ const LiveMapScreen = () => {
                     isTripActive={tripActive}
                     onStartTrip={startTrip}
                     onEndTrip={endTrip}
+                    userLocation={userLocation}
                   />
                   <QuickServices onSearch={(q) => setQuickSearch(q)} />
                 </div>

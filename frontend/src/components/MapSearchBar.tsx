@@ -14,6 +14,7 @@ interface MapSearchBarProps {
   isTripActive?: boolean;
   onStartTrip?: () => void;
   onEndTrip?: () => void;
+  userLocation?: [number, number];
 }
 
 interface SearchResult {
@@ -30,6 +31,7 @@ const MapSearchBar = ({
   isTripActive,
   onStartTrip,
   onEndTrip,
+  userLocation,
 }: MapSearchBarProps) => {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -47,9 +49,11 @@ const MapSearchBar = ({
         return;
       }
       try {
-        const res = await fetch(
-          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?access_token=${accessToken}&limit=5&types=address,poi,place`,
-        );
+        let url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?access_token=${accessToken}&limit=5&types=address,poi,place`;
+        if (userLocation) {
+          url += `&proximity=${userLocation[0]},${userLocation[1]}`;
+        }
+        const res = await fetch(url);
         const data = await res.json();
         setResults(
           (data.features || []).map((f: any) => ({
