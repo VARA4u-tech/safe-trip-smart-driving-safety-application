@@ -4,7 +4,6 @@
  * Falls back to basic logic if the microservice is offline.
  */
 
-const fetch = require('node-fetch'); // Make sure to use built-in fetch (Node 18+) or install node-fetch if needed.
 // Node 18+ has native fetch. We will assume Node 18+ as per project README.
 
 /**
