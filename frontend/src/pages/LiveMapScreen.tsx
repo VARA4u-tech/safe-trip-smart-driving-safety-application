@@ -993,9 +993,10 @@ const LiveMapScreen = () => {
           Compass | 3D | Follow | Layers | Recenter | Zoom+| Zoom-
         */}
             <div
-              className="absolute right-3 sm:right-4 flex flex-col gap-2 z-30"
+              className="absolute right-2 sm:right-4 flex flex-col gap-2 z-30 hide-on-short-screen"
               style={{
-                bottom: "calc(10.5rem + env(safe-area-inset-bottom, 0px))",
+                top: "55%",
+                transform: "translateY(-50%)",
               }}
             >
               <CompassButton
@@ -1102,9 +1103,9 @@ const LiveMapScreen = () => {
 
             {/* ── Report Hazard button ────────────────────────────────────────── */}
             <div
-              className="absolute left-3 sm:left-4 z-30"
+              className="absolute left-2 sm:left-4 z-30 hide-on-short-screen"
               style={{
-                bottom: "calc(5.5rem + env(safe-area-inset-bottom, 0px))",
+                bottom: "calc(6.5rem + env(safe-area-inset-bottom, 0px))",
               }}
             >
               <button
@@ -1121,9 +1122,9 @@ const LiveMapScreen = () => {
 
             {/* ── Emergency SOS button ────────────────────────────────────────── */}
             <div
-              className="absolute right-3 sm:right-4 z-40"
+              className="absolute right-2 sm:right-4 z-40 hide-on-short-screen"
               style={{
-                bottom: "calc(5.5rem + env(safe-area-inset-bottom, 0px))",
+                bottom: "calc(6.5rem + env(safe-area-inset-bottom, 0px))",
               }}
             >
               <EmergencySOSButton userLocation={userLocation} />
@@ -1131,7 +1132,7 @@ const LiveMapScreen = () => {
 
             {/* ── Start / End Trip button ─────────────────────────────────────── */}
             <div
-              className="absolute left-0 right-0 flex justify-center px-4 z-30"
+              className="absolute left-0 right-0 flex justify-center px-4 z-30 hide-on-short-screen"
               style={{
                 bottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))",
               }}

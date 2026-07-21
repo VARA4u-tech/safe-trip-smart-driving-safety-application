@@ -42,7 +42,7 @@ const SpeedHeadingHUD = ({
 
   return (
     <div
-      className={`absolute left-3 z-20 flex flex-col gap-2 group ${isCompact ? "bottom-44" : "bottom-40 sm:left-4 gap-3"}`}
+      className={`absolute left-3 z-20 flex flex-col gap-2 group hide-on-short-screen ${isCompact ? "bottom-28" : "bottom-40 sm:left-4 gap-3"}`}
     >
       {/* Prime Instrument: Speed */}
       <div
@@ -86,7 +86,7 @@ const SpeedHeadingHUD = ({
           </span>
         </div>
 
-        {tripActive && (
+        {tripActive && !isCompact && (
           <div className="flex gap-2 animate-in fade-in slide-in-from-left-4 duration-500">
             <div className="glass-panel px-4 py-3 rounded-2xl flex items-center gap-2 shadow-lg">
               <Route className="w-4 h-4 opacity-70" />

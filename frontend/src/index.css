@@ -96,6 +96,17 @@
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.08);
   }
 
+  .glass-panel-heavy {
+    @apply bg-background/90 backdrop-blur-2xl border border-white/20 shadow-2xl;
+  }
+
+  /* Hide HUD elements when keyboard is open on mobile */
+  @media (max-height: 550px) {
+    .hide-on-short-screen {
+      display: none !important;
+    }
+  }
+
   .vintage-heading {
     @apply font-bold uppercase tracking-[0.2em] text-primary;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
