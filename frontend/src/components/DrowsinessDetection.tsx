@@ -32,8 +32,8 @@ const DrowsinessDetection = () => {
   const [permission, setPermission] = useState<"pending" | "granted" | "denied">("pending");
   const [isLoadingModel, setIsLoadingModel] = useState(false);
   
-  // Hardcoded threshold
-  const SENSITIVITY = 0.20;
+  // Hardcoded threshold - Increased to 0.27 for better sensitivity
+  const SENSITIVITY = 0.27;
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -79,7 +79,7 @@ const DrowsinessDetection = () => {
         alarmRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3");
         alarmRef.current.loop = true;
       }
-      alarmRef.current.play().catch(() => {});
+      alarmRef.current.play().catch((err) => console.error("Audio play failed", err));
 
       toast.error("WAKE UP! ALERT DETECTED", {
         description: "You seem drowsy. Please pull over and rest.",
@@ -163,6 +163,13 @@ const DrowsinessDetection = () => {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         streamRef.current = stream;
+        
+        // Pre-initialize audio on user click to bypass browser autoplay restrictions
+        if (!alarmRef.current) {
+          alarmRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3");
+          alarmRef.current.loop = true;
+          // We don't play it yet, just create it in the user gesture context
+        }
         
         videoRef.current.addEventListener("loadeddata", () => {
             setPermission("granted");
