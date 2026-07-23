@@ -945,7 +945,7 @@ const LiveMapScreen = () => {
                 )}
 
                 {/* AI Drowsiness Detection Widget */}
-                {(!isCompact || !navRoute) && <DrowsinessDetection />}
+                {(!isCompact || !navRoute) && <DrowsinessDetection isCompact={isCompact} />}
 
                 <VoiceCommandButton onCommand={handleVoiceCommand} />
               </div>

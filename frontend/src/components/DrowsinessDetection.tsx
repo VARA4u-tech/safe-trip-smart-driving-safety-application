@@ -26,7 +26,11 @@ const calculateEAR = (landmarks: any[], eyeIndices: number[]) => {
   return (v1 + v2) / (2.0 * h);
 };
 
-const DrowsinessDetection = () => {
+interface DrowsinessDetectionProps {
+  isCompact?: boolean;
+}
+
+const DrowsinessDetection = ({ isCompact = false }: DrowsinessDetectionProps) => {
   const [isActive, setIsActive] = useState(false);
   const [isDrowsy, setIsDrowsy] = useState(false);
   const [permission, setPermission] = useState<"pending" | "granted" | "denied">("pending");
@@ -195,6 +199,41 @@ const DrowsinessDetection = () => {
     closedFramesRef.current = 0;
   };
 
+  // Mobile / Compact View
+  if (isCompact) {
+    return (
+      <button
+        onClick={isActive ? stopDetection : startDetection}
+        disabled={isLoadingModel}
+        title={isActive ? "Disable AI Drowsiness Monitor" : "Enable AI Drowsiness Monitor"}
+        aria-label="Toggle Drowsiness Monitor"
+        className={`w-10 h-10 glass-panel rounded-2xl flex items-center justify-center transition-all shadow-lg relative ${
+          isLoadingModel
+            ? "opacity-50 cursor-not-allowed"
+            : isActive
+            ? isDrowsy
+              ? "bg-red-500 text-white animate-pulse"
+              : "bg-primary text-primary-foreground"
+            : "text-muted-foreground hover:bg-primary/20"
+        }`}
+      >
+        {isDrowsy ? (
+          <AlertTriangle className="w-5 h-5 text-white" />
+        ) : isActive ? (
+          <Eye className="w-5 h-5" />
+        ) : (
+          <EyeOff className="w-5 h-5" />
+        )}
+        
+        {/* Status indicator dot */}
+        {isActive && !isDrowsy && (
+          <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border border-black shadow-[0_0_8px_rgba(34,197,94,0.8)]" />
+        )}
+      </button>
+    );
+  }
+
+  // Desktop / Full View
   return (
     <div className="card-luxe !bg-white/5 flex flex-col group overflow-hidden relative p-3 rounded-2xl shadow-lg border">
       <div className="flex items-center justify-between z-10 w-full">
