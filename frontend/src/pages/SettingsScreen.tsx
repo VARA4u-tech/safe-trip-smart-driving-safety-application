@@ -16,7 +16,6 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import EmergencyContacts from "@/components/EmergencyContacts";
-import DrowsinessDetection from "@/components/DrowsinessDetection";
 import AppFooter from "@/components/AppFooter";
 
 const SettingsScreen = () => {
@@ -102,8 +101,6 @@ const SettingsScreen = () => {
                 aria-label="Toggle notifications"
               />
             </div>
-
-            <DrowsinessDetection />
           </section>
 
           {/* Emergency Guardian Section */}

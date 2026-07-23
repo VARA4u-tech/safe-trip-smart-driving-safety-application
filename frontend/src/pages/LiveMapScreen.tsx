@@ -17,6 +17,7 @@ import MLSafetyWidget from "@/components/MLSafetyWidget";
 import EmergencySOSButton from "@/components/EmergencySOSButton";
 import QuickServices from "@/components/QuickServices";
 import ARNavigation from "@/components/ARNavigation";
+import DrowsinessDetection from "@/components/DrowsinessDetection";
 import { useAuth } from "@/hooks/useAuth";
 import HazardReportModal from "@/components/HazardReportModal";
 import { useMapboxDirections } from "@/hooks/useMapboxDirections";
@@ -942,6 +943,9 @@ const LiveMapScreen = () => {
                     trafficLevel={env.traffic.congestionLabel.toLowerCase()}
                   />
                 )}
+
+                {/* AI Drowsiness Detection Widget */}
+                {(!isCompact || !navRoute) && <DrowsinessDetection />}
 
                 <VoiceCommandButton onCommand={handleVoiceCommand} />
               </div>

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Eye, EyeOff, AlertTriangle, Settings } from "lucide-react";
+import { Eye, EyeOff, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { FilesetResolver, FaceLandmarker } from "@mediapipe/tasks-vision";
 
@@ -32,10 +32,8 @@ const DrowsinessDetection = () => {
   const [permission, setPermission] = useState<"pending" | "granted" | "denied">("pending");
   const [isLoadingModel, setIsLoadingModel] = useState(false);
   
-  // Advanced Settings
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  // Default threshold 0.20 as requested
-  const [sensitivity, setSensitivity] = useState(0.20);
+  // Hardcoded threshold
+  const SENSITIVITY = 0.20;
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -121,7 +119,7 @@ const DrowsinessDetection = () => {
         const avgEAR = (rightEAR + leftEAR) / 2.0;
 
         // Compare against sensitivity slider
-        if (avgEAR < sensitivity) {
+        if (avgEAR < SENSITIVITY) {
           closedFramesRef.current += 1;
           // Trigger if eyes closed for approx ~15 frames (half a second at 30fps)
           if (closedFramesRef.current > 15) {
@@ -138,7 +136,7 @@ const DrowsinessDetection = () => {
     if (isActive) {
       animationRef.current = requestAnimationFrame(predictWebcam);
     }
-  }, [isActive, sensitivity, triggerAlarm]);
+  }, [isActive, triggerAlarm]);
 
   useEffect(() => {
     if (isActive && !isLoadingModel && faceLandmarkerRef.current) {
@@ -191,32 +189,32 @@ const DrowsinessDetection = () => {
   };
 
   return (
-    <div className="card-luxe !bg-white/5 flex flex-col group overflow-hidden relative p-4 rounded-2xl">
+    <div className="card-luxe !bg-white/5 flex flex-col group overflow-hidden relative p-3 rounded-2xl shadow-lg border">
       <div className="flex items-center justify-between z-10 w-full">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <div
-              className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${
+              className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-500 ${
                 isActive
                   ? isDrowsy
                     ? "bg-red-500 animate-pulse"
                     : "bg-primary/20"
-                  : "bg-vintage-border-outer/20"
+                  : "bg-background/40"
               }`}
             >
               {isDrowsy ? (
-                <AlertTriangle className="w-6 h-6 text-white" />
+                <AlertTriangle className="w-5 h-5 text-white" />
               ) : isActive ? (
-                <Eye className="w-6 h-6 text-primary" />
+                <Eye className="w-5 h-5 text-primary" />
               ) : (
-                <EyeOff className="w-6 h-6 text-muted-foreground" />
+                <EyeOff className="w-5 h-5 text-muted-foreground" />
               )}
             </div>
             <div>
-              <div className="font-black text-foreground text-sm uppercase tracking-tight flex items-center gap-2">
+              <div className="font-black text-foreground text-xs uppercase tracking-tight flex items-center gap-2">
                 AI Drowsiness Monitor
-                {isLoadingModel && <span className="text-[10px] text-muted-foreground animate-pulse">(Loading AI...)</span>}
+                {isLoadingModel && <span className="text-[9px] text-muted-foreground animate-pulse">(Loading AI...)</span>}
               </div>
-              <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+              <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                 {isDrowsy
                   ? "⚠️ IMMEDIATE REST REQUIRED"
                   : isActive
@@ -228,7 +226,7 @@ const DrowsinessDetection = () => {
 
           <div className="flex items-center gap-2">
             {isActive && (
-              <div className="w-16 h-12 rounded-lg bg-black overflow-hidden border border-primary/20 shadow-inner group-hover:w-24 transition-all duration-300">
+              <div className="w-12 h-9 rounded-lg bg-black overflow-hidden border border-primary/20 shadow-inner group-hover:w-16 transition-all duration-300">
                 <video
                   ref={videoRef}
                   autoPlay
@@ -242,7 +240,7 @@ const DrowsinessDetection = () => {
             <button
               onClick={isActive ? stopDetection : startDetection}
               disabled={isLoadingModel}
-              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+              className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
                 isLoadingModel
                   ? "opacity-50 cursor-not-allowed bg-muted text-muted-foreground"
                   : isActive
@@ -252,38 +250,8 @@ const DrowsinessDetection = () => {
             >
               {isActive ? "Turn Off" : "Enable AI"}
             </button>
-            <button 
-                onClick={() => setShowAdvanced(!showAdvanced)} 
-                className={`p-2 ml-1 rounded-lg hover:bg-white/10 transition-colors ${showAdvanced ? 'bg-white/10 text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-                title="Advanced Settings"
-            >
-                <Settings className="w-4 h-4" />
-            </button>
           </div>
       </div>
-      
-      {/* Advanced Settings Panel */}
-      {showAdvanced && (
-          <div className="mt-4 pt-4 border-t border-white/10 z-10 animate-in slide-in-from-top-2 fade-in duration-200">
-              <div className="flex justify-between items-center mb-2">
-                 <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Eye Detection Sensitivity</span>
-                 <span className="text-xs font-mono text-primary">{sensitivity.toFixed(2)}</span>
-              </div>
-              <input 
-                 type="range" 
-                 min="0.10" 
-                 max="0.35" 
-                 step="0.01" 
-                 value={sensitivity} 
-                 onChange={(e) => setSensitivity(parseFloat(e.target.value))}
-                 className="w-full accent-primary cursor-pointer"
-              />
-              <div className="flex justify-between mt-1 text-[10px] text-muted-foreground">
-                  <span>Less Sensitive (0.10)</span>
-                  <span>More Sensitive (0.35)</span>
-              </div>
-          </div>
-      )}
 
       {/* Decorative pulse when drowsy */}
       {isDrowsy && (
